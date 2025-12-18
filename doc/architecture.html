@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alchemy Build System - Architecture Design</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f3460;
+            --text-primary: #eaeaea;
+            --text-secondary: #a0a0a0;
+            --accent: #e94560;
+            --accent-light: #ff6b6b;
+            --code-bg: #0d1117;
+            --border-color: #30363d;
+            --success: #3fb950;
+            --warning: #d29922;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--accent);
+            border-bottom: 3px solid var(--accent);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+
+        h2 {
+            color: var(--accent-light);
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 1.8rem;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        h4 {
+            color: var(--text-secondary);
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            color: var(--accent-light);
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            color: var(--accent-light);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        ul, ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 40px 0;
+        }
+
+        .mermaid {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .card h3 {
+            margin-top: 0;
+        }
+
+        .toc {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: var(--accent);
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .toc li {
+            margin-bottom: 5px;
+        }
+
+        .toc a {
+            color: var(--text-secondary);
+        }
+
+        .toc a:hover {
+            color: var(--accent);
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .feature-card h4 {
+            color: var(--accent-light);
+            margin-top: 0;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            h2 {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#0f3460',
+                primaryTextColor: '#eaeaea',
+                primaryBorderColor: '#e94560',
+                lineColor: '#58a6ff',
+                secondaryColor: '#16213e',
+                tertiaryColor: '#1a1a2e',
+                background: '#1a1a2e',
+                mainBkg: '#16213e',
+                secondBkg: '#0f3460',
+                nodeBorder: '#e94560',
+                clusterBkg: '#16213e',
+                clusterBorder: '#e94560',
+                titleColor: '#e94560',
+                edgeLabelBackground: '#16213e'
+            },
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            sequence: {
+                useMaxWidth: true,
+                actorMargin: 50,
+                boxMargin: 10,
+                mirrorActors: false
+            }
+        });
+    </script>
+
+    <div class="container">
+        <h1>Alchemy Build System <span class="version-badge">v1.3.10</span></h1>
+
+        <div class="toc">
+            <h3>📑 Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#directory-structure">Directory Structure</a></li>
+                <li><a href="#core-components">Core Components</a></li>
+                <li><a href="#module-system">Module System</a></li>
+                <li><a href="#module-classes">Module Classes</a></li>
+                <li><a href="#target-configuration">Target Configuration</a></li>
+                <li><a href="#build-pipeline">Build Pipeline</a></li>
+                <li><a href="#output-structure">Output Directory Structure</a></li>
+                <li><a href="#key-features">Key Features</a></li>
+                <li><a href="#data-flow">Data Flow Diagram</a></li>
+                <li><a href="#component-interaction">Component Interaction</a></li>
+                <li><a href="#utility-macros">Utility Macros</a></li>
+                <li><a href="#license">License</a></li>
+            </ul>
+        </div>
+
+        <hr>
+
+        <h2 id="overview">Overview</h2>
+        <p><strong>Alchemy</strong> is a sophisticated build system inspired by the Android build system, designed to manage complex multi-platform software builds. It combines the simplicity of Android's module-based approach with Buildroot's ability to build open-source packages.</p>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph ALCHEMY["🔧 ALCHEMY BUILD SYSTEM v1.3.10"]
+        direction TB
+        
+        subgraph Entry["Phase 1: Entry"]
+            A["alchemake\nEntry Point"] --> B["main.mk\nCore"]
+            B --> C["Module\nDiscovery"]
+        end
+        
+        subgraph Setup["Phase 2: Setup"]
+            D["Target\nSetup"]
+            E["Toolchain\nSetup"]
+            F["Module\nClasses"]
+        end
+        
+        A --> D
+        B --> E
+        C --> F
+        
+        D & E & F --> G["Build Rules\nGeneration"]
+        
+        subgraph Output["Phase 3: Output"]
+            G --> H["Staging\nDirectory"]
+            H --> I["Final\nDirectory"]
+            I --> J["Image\nGeneration"]
+        end
+    end
+        </div>
+
+        <hr>
+
+        <h2 id="directory-structure">Directory Structure</h2>
+
+        <div class="mermaid">
+flowchart LR
+    subgraph Root["📁 alchemy/"]
+        direction TB
+        
+        subgraph Core["Core Makefiles"]
+            M1["main.mk"]
+            M2["defs.mk"]
+            M3["variables.mk"]
+            M4["envsetup.mk"]
+            M5["target-setup.mk"]
+            M6["toolchain-setup.mk"]
+        end
+        
+        subgraph Build["Build Support"]
+            B1["check.mk"]
+            B2["config-defs.mk"]
+            B3["config-rules.mk"]
+            B4["image.mk"]
+            B5["final.mk"]
+            B6["sdk.mk"]
+        end
+        
+        subgraph Dirs["Directories"]
+            D1["📁 classes/"]
+            D2["📁 scripts/"]
+            D3["📁 targets/"]
+            D4["📁 toolchains/"]
+            D5["📁 kconfig/"]
+            D6["📁 doc/"]
+        end
+    end
+        </div>
+
+        <h3>Detailed Structure</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Directory</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><code>classes/</code></td><td>Module class definitions (EXECUTABLE, LIBRARY, AUTOTOOLS, CMAKE, etc.)</td></tr>
+                <tr><td><code>scripts/</code></td><td>Build helper scripts (alchemake.py, makefinal.py, mkfs.py, etc.)</td></tr>
+                <tr><td><code>targets/</code></td><td>Target OS configurations (linux, darwin, windows, ecos, baremetal)</td></tr>
+                <tr><td><code>toolchains/</code></td><td>Toolchain configurations and compiler flags</td></tr>
+                <tr><td><code>kconfig/</code></td><td>Configuration system (menuconfig)</td></tr>
+                <tr><td><code>doc/</code></td><td>Documentation files</td></tr>
+            </tbody>
+        </table>
+
+        <hr>
+
+        <h2 id="core-components">Core Components</h2>
+
+        <h3>1. Build Entry Points</h3>
+
+        <div class="card">
+            <h4><code>alchemake</code> / <code>alchemake.py</code></h4>
+            <p>The main entry point for builds. Wraps GNU Make with:</p>
+            <ul>
+                <li>Error detection and early termination</li>
+                <li>Parallel job management</li>
+                <li>Process group handling for clean interruption</li>
+                <li>Console control for interactive tools (ncurses)</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h4><code>main.mk</code></h4>
+            <p>The core makefile that:</p>
+            <ul>
+                <li>Defines Alchemy version (1.3.10)</li>
+                <li>Sets up build environment</li>
+                <li>Scans workspace for <code>atom.mk</code> files</li>
+                <li>Registers modules</li>
+                <li>Generates build rules</li>
+                <li>Orchestrates the complete build process</li>
+            </ul>
+        </div>
+
+        <hr>
+
+        <h2 id="module-system">Module System</h2>
+
+        <p>Modules are the fundamental building blocks. Each module is defined by an <code>atom.mk</code> file using <code>LOCAL_xxx</code> variables:</p>
+
+        <pre><code>LOCAL_PATH := $(call my-dir)
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := my-module
+LOCAL_SRC_FILES := src/main.c src/utils.c
+LOCAL_CFLAGS := -Wall -Werror
+LOCAL_LIBRARIES := dependency1 dependency2
+
+include $(BUILD_EXECUTABLE)</code></pre>
+
+        <h3>Module Variables (<code>LOCAL_xxx</code>)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Variable</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><code>LOCAL_MODULE</code></td><td>Module name</td></tr>
+                <tr><td><code>LOCAL_SRC_FILES</code></td><td>Source files to compile</td></tr>
+                <tr><td><code>LOCAL_CFLAGS</code></td><td>C compiler flags</td></tr>
+                <tr><td><code>LOCAL_CXXFLAGS</code></td><td>C++ compiler flags</td></tr>
+                <tr><td><code>LOCAL_LDFLAGS</code></td><td>Linker flags</td></tr>
+                <tr><td><code>LOCAL_LDLIBS</code></td><td>Libraries to link</td></tr>
+                <tr><td><code>LOCAL_LIBRARIES</code></td><td>Module dependencies</td></tr>
+                <tr><td><code>LOCAL_EXPORT_CFLAGS</code></td><td>Flags exported to dependents</td></tr>
+            </tbody>
+        </table>
+
+        <hr>
+
+        <h2 id="module-classes">Module Classes</h2>
+
+        <div class="mermaid">
+flowchart LR
+    subgraph Classes["MODULE CLASSES"]
+        direction TB
+        
+        subgraph Internal["🔨 INTERNAL - Source-based"]
+            I1["EXECUTABLE"]
+            I2["SHARED_LIBRARY"]
+            I3["STATIC_LIBRARY"]
+            I4["LIBRARY"]
+            I5["PREBUILT"]
+        end
+        
+        subgraph External["📦 EXTERNAL - Build Systems"]
+            E1["AUTOTOOLS"]
+            E2["CMAKE"]
+            E3["MESON"]
+            E4["QMAKE"]
+            E5["PYTHON_PACKAGE"]
+            E6["PYTHON_EXTENSION"]
+            E7["CUSTOM"]
+            E8["META_PACKAGE"]
+            E9["LINUX"]
+            E10["LINUX_MODULE"]
+            E11["GI_TYPELIB"]
+        end
+    end
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>Internal Classes</h4>
+                <ul>
+                    <li><strong>EXECUTABLE</strong> - Binary executables</li>
+                    <li><strong>SHARED_LIBRARY</strong> - .so files</li>
+                    <li><strong>STATIC_LIBRARY</strong> - .a files</li>
+                    <li><strong>LIBRARY</strong> - Generic library</li>
+                    <li><strong>PREBUILT</strong> - Pre-compiled files</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h4>External Classes</h4>
+                <ul>
+                    <li><strong>AUTOTOOLS</strong> - GNU configure/make</li>
+                    <li><strong>CMAKE</strong> - CMake projects</li>
+                    <li><strong>MESON</strong> - Meson build system</li>
+                    <li><strong>QMAKE</strong> - Qt projects</li>
+                    <li><strong>CUSTOM</strong> - Custom scripts</li>
+                </ul>
+            </div>
+        </div>
+
+        <hr>
+
+        <h2 id="target-configuration">Target Configuration</h2>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph Config["🎯 TARGET CONFIGURATION"]
+        direction LR
+        
+        subgraph OS["TARGET_OS"]
+            OS1["linux"]
+            OS2["darwin"]
+            OS3["windows"]
+            OS4["ecos"]
+            OS5["baremetal"]
+        end
+        
+        subgraph Arch["TARGET_ARCH"]
+            A1["arm"]
+            A2["aarch64"]
+            A3["x86"]
+            A4["x64"]
+        end
+        
+        subgraph CPU["TARGET_CPU"]
+            C1["armv5te"]
+            C2["armv7a"]
+            C3["armv7a-neon"]
+            C4["p6/p6i/p7"]
+            C5["tegrak1/x1"]
+        end
+        
+        subgraph Flavour["TARGET_OS_FLAVOUR"]
+            F1["native"]
+            F2["android"]
+            F3["parrot"]
+            F4["yocto"]
+            F5["iphoneos"]
+        end
+        
+        subgraph Libc["TARGET_LIBC"]
+            L1["glibc"]
+            L2["eglibc"]
+            L3["bionic"]
+            L4["musl"]
+            L5["native"]
+        end
+    end
+        </div>
+
+        <hr>
+
+        <h2 id="build-pipeline">Build Pipeline</h2>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph Pipeline["🔄 BUILD PIPELINE"]
+        direction TB
+        
+        subgraph P1["Phase 1: Setup"]
+            S1["Environment\nSetup"] --> S2["Target\nSetup"] --> S3["Toolchain\nSetup"]
+        end
+        
+        subgraph P2["Phase 2: Discovery"]
+            D1["Scan\natom.mk"] --> D2["Register\nModules"] --> D3["Resolve\nDependencies"]
+        end
+        
+        subgraph P3["Phase 3: Configuration"]
+            C1["Load\nKconfig"] --> C2["Menu\nConfig"] --> C3["Generate\n.config"]
+        end
+        
+        subgraph P4["Phase 4: Build"]
+            B1["Unpack"] --> B2["Patch"] --> B3["Configure"] --> B4["Build"]
+        end
+        
+        subgraph P5["Phase 5: Install"]
+            I1["Install\nto Stage"] --> I2["Staging\nComplete"] --> I3["Done\nStamp"]
+        end
+        
+        subgraph P6["Phase 6: Finalization"]
+            F1["Final\nTree"] --> F2["Strip\nSymbols"] --> F3["Image\nGeneration"]
+        end
+        
+        P1 --> P2 --> P3 --> P4 --> P5 --> P6
+    end
+        </div>
+
+        <hr>
+
+        <h2 id="output-structure">Output Directory Structure</h2>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph Output["📂 TARGET_OUT"]
+        direction TB
+        
+        subgraph Build["build/"]
+            B1["module1/"]
+            B2["module2/"]
+            B1 --> B1a["*.o files"]
+            B1 --> B1b["*.d deps"]
+            B1 --> B1c["stamps/"]
+        end
+        
+        subgraph Staging["staging/"]
+            S1["usr/bin/"]
+            S2["usr/lib/"]
+            S3["usr/include/"]
+            S4["usr/share/"]
+            S5["etc/"]
+        end
+        
+        subgraph Final["final/"]
+            F1["usr/"]
+            F2["etc/"]
+            F3["lib/"]
+            F4["boot/"]
+        end
+        
+        subgraph Symbols["symbols/"]
+            SY1["usr/lib/.debug/"]
+        end
+        
+        subgraph Gcov["gcov/"]
+            G1["coverage data"]
+        end
+    end
+        </div>
+
+        <hr>
+
+        <h2 id="key-features">Key Features</h2>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>🌍 Multi-Platform Support</h4>
+                <ul>
+                    <li><strong>Host Systems:</strong> Linux, macOS</li>
+                    <li><strong>Target Systems:</strong> Linux, Android, iOS, macOS, Windows, eCos, Baremetal</li>
+                    <li><strong>Architectures:</strong> ARM, ARM64, x86, x64, AVR</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h4>🔧 Build System Integration</h4>
+                <ul>
+                    <li>Native source compilation (C, C++, Fortran)</li>
+                    <li>GNU Autotools integration</li>
+                    <li>CMake integration</li>
+                    <li>Meson integration</li>
+                    <li>Qt/QMake integration</li>
+                    <li>Python package support</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h4>⚙️ Configuration System (kconfig)</h4>
+                <ul>
+                    <li>Linux-style configuration</li>
+                    <li>Menuconfig interface</li>
+                    <li>Dependencies and constraints</li>
+                    <li>Automatic configuration validation</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h4>🚀 Advanced Features</h4>
+                <ul>
+                    <li>Parallel builds with proper error handling</li>
+                    <li>Incremental builds with dependency tracking</li>
+                    <li>Cross-compilation support</li>
+                    <li>SDK generation</li>
+                    <li>Code coverage (gcov) support</li>
+                    <li>Debug symbol separation</li>
+                    <li>Multiple image formats (ext4, ubifs, cpio, tar, plf)</li>
+                </ul>
+            </div>
+        </div>
+
+        <hr>
+
+        <h2 id="data-flow">Data Flow Diagram</h2>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph DataFlow["📊 DATA FLOW"]
+        direction TB
+        
+        A[("📄 atom.mk\nmodules")] --> B["Scanner"]
+        B --> C[("Registry\nmodules")]
+        C --> D["Dependency\nResolver"]
+        D --> A
+        
+        E[("⚙️ .config\nkconfig")] --> F["Config\nProcessor"]
+        C --> F
+        F --> G["Enabled\nModules"]
+        
+        H[("🔧 Toolchain\nConfig")] --> I["Rule\nGenerator"]
+        G --> I
+        I --> J["Build\nExecution"]
+        
+        J --> K[("Staging\nDirectory")]
+        J --> L[("Final\nDirectory")]
+        J --> M[("Symbols\nDirectory")]
+        
+        L --> N[("💿 Image\n.ext4, .ubifs,\n.tar, ...")]
+        
+        K --> O[("📦 SDK\nPackage")]
+    end
+        </div>
+
+        <hr>
+
+        <h2 id="component-interaction">Component Interaction</h2>
+
+        <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant alchemake
+    participant main.mk
+    participant Scanner
+    participant Classes
+    participant Toolchain
+    participant Builder
+    
+    User->>alchemake: make target
+    alchemake->>main.mk: Include & execute
+    main.mk->>Scanner: Scan for atom.mk
+    Scanner-->>main.mk: Module list
+    main.mk->>Classes: Load module classes
+    main.mk->>Toolchain: Setup compiler
+    
+    loop For each module
+        main.mk->>Builder: Generate rules
+        Builder->>Builder: Compile sources
+        Builder->>Builder: Link objects
+        Builder-->>main.mk: Module built
+    end
+    
+    main.mk->>Builder: Generate final tree
+    Builder->>Builder: Strip symbols
+    Builder->>Builder: Create image
+    Builder-->>alchemake: Build complete
+    alchemake-->>User: Success/Failure
+        </div>
+
+        <hr>
+
+        <h2 id="utility-macros">Utility Macros (defs.mk)</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Macro</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><code>my-dir</code></td><td>Returns the directory of the current makefile</td></tr>
+                <tr><td><code>path-from-top</code></td><td>Converts absolute path to relative from top</td></tr>
+                <tr><td><code>get-define</code></td><td>Converts string to uppercase with underscores</td></tr>
+                <tr><td><code>is-path-absolute</code></td><td>Checks if path is absolute</td></tr>
+                <tr><td><code>streq</code> / <code>strneq</code></td><td>String equality comparison</td></tr>
+                <tr><td><code>check-version</code></td><td>Version comparison</td></tr>
+                <tr><td><code>uniq</code> / <code>uniq2</code></td><td>Remove duplicates from list</td></tr>
+                <tr><td><code>is-var-defined</code></td><td>Check if variable is defined</td></tr>
+                <tr><td><code>is-item-in-list</code></td><td>Check if item exists in list</td></tr>
+            </tbody>
+        </table>
+
+        <hr>
+
+        <h2 id="license">License</h2>
+
+        <div class="card">
+            <ul>
+                <li><strong>Alchemy:</strong> 3-clause BSD License</li>
+                <li><strong>kconfig:</strong> GPLv2 (from Linux kernel)</li>
+            </ul>
+        </div>
+
+        <hr>
+
+        <h2>References</h2>
+        <ul>
+            <li><a href="android-build-system.html">Android Build System Documentation</a></li>
+            <li><a href="android-mk.html">Android NDK Build System</a></li>
+            <li><a href="../variables.mk">Variables Reference</a></li>
+            <li><a href="alchemy.mkd">Main Documentation</a></li>
+        </ul>
+
+        <hr>
+        <p style="text-align: center; margin-top: 40px; color: var(--text-secondary);">
+            Generated on December 18, 2025 | Alchemy Build System v1.3.10
+        </p>
+    </div>
+</body>
+</html>
