@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alchemake Architecture Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1, h2, h3 { color: #2c3e50; }
+        h1 { border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        h2 { border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; margin-top: 40px; }
+        .mermaid { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; background: white; border-radius: 8px; overflow: hidden; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #3498db; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 4px; font-family: 'Fira Code', monospace; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 8px; overflow-x: auto; }
+        .feature-box { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #3498db; }
+        .warning { border-left-color: #e74c3c; background: #fdf2f2; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Alchemake Architecture Analysis</h1>
+    
+    <h2>Overview</h2>
+    <p><strong>alchemake.py</strong> is a sophisticated Make wrapper script that provides <strong>intelligent error detection and early termination</strong> for parallel builds. It solves a common problem: when running <code>make -jN</code> (parallel jobs), the first-level Make doesn't immediately stop other jobs when one fails, causing users to wait a long time and scroll through extensive output to find the actual error.</p>
+
+    <h2>Core Purpose</h2>
+    <div class="mermaid">
+flowchart LR
+    subgraph Problem["❌ Problem with native make -j"]
+        A[make -j8] --> B[Job 1 ✓]
+        A --> C[Job 2 ✓]
+        A --> D[Job 3 ❌ Error]
+        A --> E[Job 4 ✓]
+        A --> F[Job 5 ✓]
+        A --> G[Job 6 ✓]
+        A --> H[Job 7 ✓]
+        A --> I[Job 8 ✓]
+        D -.->|Error buried in output| J[Hard to find error]
+    end
+    
+    subgraph Solution["✅ Solution with alchemake"]
+        K[alchemake] --> L[make -j8]
+        L --> M[Job 1 ✓]
+        L --> N[Job 2 ✓]
+        L --> O[Job 3 ❌]
+        O --> P{Error Detected}
+        P -->|Kill all jobs| Q[Immediate Stop]
+        Q --> R[Clear error message]
+    end
+    </div>
+
+    <h2>Architecture Overview</h2>
+    <div class="mermaid">
+flowchart TB
+    subgraph Main["Main Entry Point"]
+        START([Start]) --> SETUP[Setup Logging]
+        SETUP --> TTY{Is TTY?}
+        TTY -->|No| SIMPLE[Simple subprocess.Popen]
+        TTY -->|Yes| JOBCTRL[Initialize JobCtrl]
+    end
+    
+    subgraph JobControl["Job Control System"]
+        JOBCTRL --> SIGNALS[Setup Signal Handlers]
+        SIGNALS --> LAUNCH[Launch make as Job]
+        LAUNCH --> MONITOR[Monitor stderr pipe]
+    end
+    
+    subgraph ErrorDetection["Error Detection Loop"]
+        MONITOR --> READ[Read stderr line]
+        READ --> EOF{EOF?}
+        EOF -->|Yes| WAIT[Wait for process]
+        EOF -->|No| CHECK{Error pattern?}
+        CHECK -->|No| WRITE[Write to stderr]
+        WRITE --> READ
+        CHECK -->|Yes| KILL[Kill process tree]
+        KILL --> WAIT
+    end
+    
+    subgraph Cleanup["Cleanup & Exit"]
+        WAIT --> RESTORE[Restore terminal]
+        RESTORE --> EXIT([Exit with make's return code])
+    end
+    
+    SIMPLE --> EXIT
+    </div>
+
+    <h2>Class Diagram</h2>
+    <div class="mermaid">
+classDiagram
+    class JobCtrl {
+        +int tcpgrp
+        +bool foreground
+        +Job job
+        +__init__()
+        +signalHandler(signo, frame)
+    }
+    
+    class Job {
+        +JobCtrl jobCtrl
+        +Process process
+        +int pid
+        +int pgid
+        +int status
+        +bool stopped
+        +__init__(jobCtrl)
+        +_preExec()
+        +launch(cmdline, stdin, stdout, stderr, env)
+        +kill()
+        +updateStatus(status)
+    }
+    
+    JobCtrl "1" --> "1" Job : manages
+    </div>
+
+    <h2>Signal Handling Flow</h2>
+    <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant Alchemake
+    participant Make
+    participant SubProcesses
+    
+    User->>Alchemake: Start build
+    Alchemake->>Make: Launch in new process group
+    Make->>SubProcesses: Spawn parallel jobs
+    
+    alt Error Detected in stderr
+        SubProcesses-->>Make: Error output
+        Make-->>Alchemake: Pipe stderr
+        Alchemake->>Alchemake: Match error pattern
+        Alchemake->>Make: SIGINT
+        Alchemake->>SubProcesses: SIGINT (via killpg)
+        Alchemake->>SubProcesses: SIGTERM
+        Alchemake->>SubProcesses: SIGKILL
+        Alchemake->>User: "MAKE ERROR DETECTED"
+    end
+    
+    alt User presses Ctrl+C
+        User->>Alchemake: SIGINT
+        Alchemake->>Make: Kill process tree
+        Alchemake->>SubProcesses: Terminate all
+    end
+    
+    alt User presses Ctrl+Z
+        User->>Make: SIGTSTP
+        Make-->>Alchemake: SIGCHLD (stopped)
+        Alchemake->>Alchemake: Take back terminal
+        Alchemake->>Alchemake: Propagate SIGSTOP
+    end
+    </div>
+
+    <h2>Process Group Management</h2>
+    <div class="mermaid">
+flowchart TB
+    subgraph Terminal["Terminal Control"]
+        TTY[TTY stdin/stdout]
+    end
+    
+    subgraph ParentGroup["Parent Process Group"]
+        SHELL[Shell]
+        ALCHEMAKE[alchemake.py]
+        SHELL --> ALCHEMAKE
+    end
+    
+    subgraph ChildGroup["Child Process Group - isolated"]
+        MAKE[make]
+        CC1[gcc compile 1]
+        CC2[gcc compile 2]
+        CC3[gcc compile 3]
+        LD[linker]
+        MAKE --> CC1
+        MAKE --> CC2
+        MAKE --> CC3
+        MAKE --> LD
+    end
+    
+    ALCHEMAKE -->|Launches in new pgid| MAKE
+    TTY <-->|tcsetpgrp| ChildGroup
+    ALCHEMAKE -->|killpg on error| ChildGroup
+    </div>
+
+    <h2>Error Detection Patterns</h2>
+    <table>
+        <tr><th>Pattern</th><th>Description</th></tr>
+        <tr><td><code>make: *** No rule to make target .*</code></td><td>Missing target/dependency</td></tr>
+        <tr><td><code>make: *** [.*] Error [0-9]+</code></td><td>Recipe execution failure</td></tr>
+    </table>
+
+    <h2>Key Features</h2>
+    
+    <div class="feature-box">
+        <h3>1. Early Error Termination</h3>
+        <p>Scans stderr in real-time for make error patterns. Immediately kills entire process tree on first error, reducing wasted build time significantly.</p>
+    </div>
+    
+    <div class="feature-box">
+        <h3>2. Process Group Isolation</h3>
+        <p>Child make runs in its own process group (<code>setpgid(0, 0)</code>). Allows clean termination of all descendant processes without killing the wrapper script itself.</p>
+    </div>
+    
+    <div class="feature-box">
+        <h3>3. Terminal Control (TTY Handling)</h3>
+        <p>Properly manages foreground/background process groups. Handles <code>tcsetpgrp</code> for terminal ownership. Supports ncurses-based tools (like <code>make menuconfig</code>).</p>
+    </div>
+    
+    <div class="feature-box">
+        <h3>4. Signal Propagation</h3>
+        <ul>
+            <li><strong>SIGINT/SIGTERM:</strong> Gracefully terminates build</li>
+            <li><strong>SIGTSTP (Ctrl+Z):</strong> Properly suspends and resumes</li>
+            <li><strong>SIGCONT:</strong> Resumes child processes correctly</li>
+            <li><strong>SIGCHLD:</strong> Monitors child process state changes</li>
+        </ul>
+    </div>
+    
+    <div class="feature-box">
+        <h3>5. Graceful Degradation</h3>
+        <p>Falls back to simple subprocess if not on TTY. Works on non-interactive terminals and CI/CD pipelines.</p>
+    </div>
+
+    <h2>Kill Sequence</h2>
+    <div class="mermaid">
+flowchart LR
+    ERROR[Error Detected] --> WAIT1[Wait 200ms]
+    WAIT1 --> INT1[SIGINT to pid]
+    INT1 --> WAIT2[Wait 200ms]
+    WAIT2 --> INT2[SIGINT to pgid]
+    INT2 --> WAIT3[Wait 200ms]
+    WAIT3 --> TERM[SIGTERM to pgid]
+    TERM --> WAIT4[Wait 200ms]
+    WAIT4 --> KILL[SIGKILL to pgid]
+    </div>
+
+    <h2>Environment Setup</h2>
+    <table>
+        <tr><th>Variable</th><th>Value</th><th>Purpose</th></tr>
+        <tr><td><code>ALCHEMAKE_CMDLINE</code></td><td>Full command</td><td>Debugging/tracing</td></tr>
+        <tr><td><code>LC_MESSAGES</code></td><td><code>C</code></td><td>Force English error messages</td></tr>
+        <tr><td><code>LC_TIME</code></td><td><code>C</code></td><td>Consistent time formatting</td></tr>
+    </table>
+
+    <h2>Constraints & Considerations</h2>
+    <div class="feature-box warning">
+        <ul>
+            <li><strong>Linux-specific:</strong> Heavy use of POSIX signals and process groups</li>
+            <li><strong>TTY Required:</strong> Full functionality needs interactive terminal</li>
+            <li><strong>Disk Wait Edge Case:</strong> Cannot interrupt processes in uninterruptible I/O wait</li>
+            <li><strong>stderr only:</strong> Only stderr is scanned; stdout passes through directly to support ncurses</li>
+        </ul>
+    </div>
+
+    <h2>Recommendations</h2>
+    <ul>
+        <li>Use <code>alchemake</code> instead of raw <code>make</code> for parallel builds</li>
+        <li>Particularly useful with high <code>-j</code> values (e.g., <code>-j$(nproc)</code>)</li>
+        <li>Works best in interactive terminal sessions</li>
+        <li>For CI/CD, still works but with reduced job control features</li>
+    </ul>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+</body>
+</html>

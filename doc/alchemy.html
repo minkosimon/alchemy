@@ -1,7 +1,29 @@
 <p><title>Alchemy</title>
 <link href="markdown.css" rel="stylesheet"></link></p>
 
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 <script src="toc.js" type="text/javascript"></script>
+<script>
+mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    securityLevel: 'loose',
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+});
+</script>
+<style>
+.mermaid {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    text-align: center;
+}
+.mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+</style>
 
 <p><body onload="generateTOC(document.getElementById('toc'));"></p>
 
@@ -49,6 +71,970 @@ This build system differs mainly in the set of <code>LOCAL_XXX</code> variables 
 <p><strong>Note</strong> : This documentation tries to be up to date but take a look at
 the file <code>variables.mk</code> for a complete list of <code>LOCAL_xxx</code> and <code>TARGET_xxx</code>
 variables that can be used. It also has some description of variables.</p>
+
+<hr />
+
+<h2>Architecture Overview</h2>
+
+<p>The following diagrams illustrate the architecture and build flow of <code>Alchemy</code>.</p>
+
+<h3>Build System Architecture</h3>
+
+<div class="mermaid">
+flowchart TB
+    subgraph ALCHEMY["🔧 ALCHEMY BUILD SYSTEM"]
+        direction TB
+        
+        subgraph Entry["Phase 1: Entry Point"]
+            A["alchemake.py&lt;br/&gt;Build Wrapper"] --> B["main.mk&lt;br/&gt;Core Engine"]
+            B --> C["Module Discovery&lt;br/&gt;Scan atom.mk"]
+        end
+        
+        subgraph Setup["Phase 2: Configuration"]
+            D["Target Setup&lt;br/&gt;TARGET_xxx"] 
+            E["Toolchain Setup&lt;br/&gt;Compiler/Linker"]
+            F["Module Classes&lt;br/&gt;BUILD_xxx"]
+        end
+        
+        C --> D
+        C --> E
+        C --> F
+        
+        D & E & F --> G["Build Rules Generation"]
+        
+        subgraph Output["Phase 3: Build Output"]
+            H["Compilation&lt;br/&gt;Objects"] --> I["Staging&lt;br/&gt;Libraries/Binaries"]
+            I --> J["Final Tree&lt;br/&gt;Stripped Image"]
+        end
+        
+        G --> H
+    end
+</div>
+
+<h3>Module Classes Hierarchy</h3>
+
+<div class="mermaid">
+flowchart LR
+    subgraph Classes["MODULE CLASSES"]
+        direction TB
+        
+        subgraph Internal["🔨 INTERNAL - Source-based"]
+            I1["EXECUTABLE"]
+            I2["STATIC_LIBRARY"]
+            I3["SHARED_LIBRARY"]
+            I4["LIBRARY&lt;br/&gt;(static+shared)"]
+            I5["PREBUILT"]
+        end
+        
+        subgraph External["📦 EXTERNAL - Build Systems"]
+            E1["AUTOTOOLS&lt;br/&gt;configure/make"]
+            E2["CMAKE&lt;br/&gt;CMakeLists.txt"]
+            E3["MESON&lt;br/&gt;meson.build"]
+            E4["QMAKE&lt;br/&gt;Qt projects"]
+            E5["PYTHON_PACKAGE&lt;br/&gt;setup.py"]
+            E6["CUSTOM&lt;br/&gt;Custom scripts"]
+            E7["META_PACKAGE&lt;br/&gt;Dependencies only"]
+            E8["LINUX_MODULE&lt;br/&gt;Kernel modules"]
+        end
+    end
+</div>
+
+<h3>Build Pipeline Flow</h3>
+
+<div class="mermaid">
+flowchart TB
+    subgraph Pipeline["🔄 BUILD PIPELINE"]
+        direction TB
+        
+        P1["📥 Source Files&lt;br/&gt;atom.mk definitions"]
+        P2["⚙️ Configuration&lt;br/&gt;kconfig / global.config"]
+        P3["🔨 Compilation&lt;br/&gt;Objects generation"]
+        P4["📦 Staging&lt;br/&gt;Libraries + Headers"]
+        P5["✂️ Final&lt;br/&gt;Stripped binaries"]
+        P6["💾 Image&lt;br/&gt;tar/cpio/ext4/plf"]
+        
+        P1 --> P2 --> P3 --> P4 --> P5 --> P6
+    end
+</div>
+
+<h3>Output Directory Structure</h3>
+
+<div class="mermaid">
+flowchart TB
+    subgraph Output["📂 TARGET_OUT"]
+        direction TB
+        
+        subgraph Build["build/"]
+            B1["module-1/&lt;br/&gt;Objects, .o files"]
+            B2["module-2/&lt;br/&gt;Objects, .o files"]
+            B3["...&lt;br/&gt;Other modules"]
+        end
+        
+        subgraph Staging["staging/"]
+            S1["usr/bin/&lt;br/&gt;Executables"]
+            S2["usr/lib/&lt;br/&gt;Libraries (.so, .a)"]
+            S3["usr/include/&lt;br/&gt;Headers"]
+        end
+        
+        subgraph Final["final/"]
+            F1["bin/, lib/&lt;br/&gt;Stripped binaries"]
+            F2["etc/&lt;br/&gt;Configuration"]
+            F3["boot/&lt;br/&gt;Kernel, DTB"]
+        end
+        
+        subgraph Extra["Additional"]
+            X1["symbols/&lt;br/&gt;Debug symbols"]
+            X2["gcov/&lt;br/&gt;Coverage data"]
+        end
+    end
+</div>
+
+<h3>Target Configuration Options</h3>
+
+<div class="mermaid">
+flowchart TB
+    subgraph Config["🎯 TARGET CONFIGURATION"]
+        direction LR
+        
+        subgraph OS["TARGET_OS"]
+            OS1["linux"]
+            OS2["darwin"]
+            OS3["android"]
+            OS4["ecos"]
+            OS5["baremetal"]
+        end
+        
+        subgraph Arch["TARGET_ARCH"]
+            A1["arm"]
+            A2["aarch64"]
+            A3["x86"]
+            A4["x64"]
+        end
+        
+        subgraph Flavour["TARGET_OS_FLAVOUR"]
+            F1["native"]
+            F2["parrot"]
+            F3["yocto"]
+            F4["android"]
+        end
+        
+        subgraph Libc["TARGET_LIBC"]
+            L1["eglibc/glibc"]
+            L2["bionic"]
+            L3["native"]
+            L4["darwin"]
+        end
+    end
+</div>
+
+<hr />
+
+<h2>Quick Start: HelloWorld Examples</h2>
+
+<p>This section shows how to build simple C and C++ programs with <code>Alchemy</code>.</p>
+
+<h3>Project Structure</h3>
+
+<p>Create the following directory structure:</p>
+
+<pre>
+my_project/
+├── alchemy/                    # Alchemy build system (clone/symlink)
+├── config/                     # Configuration directory
+│   └── product.mk              # Product configuration
+├── hello_c/                    # C example
+│   ├── atom.mk                 # Module definition
+│   └── src/
+│       └── helloworld.c        # C source file
+├── hello_cpp/                  # C++ example
+│   ├── atom.mk                 # Module definition
+│   └── src/
+│       └── helloworld.cpp      # C++ source file
+└── build.sh                    # Build wrapper script
+</pre>
+
+<h3>HelloWorld in C</h3>
+
+<p><strong>File: <code>hello_c/src/helloworld.c</code></strong></p>
+<pre>
+#include &lt;stdio.h&gt;
+
+int main(int argc, char *argv[])
+{
+    printf("Hello, World from C!\n");
+    return 0;
+}
+</pre>
+
+<p><strong>File: <code>hello_c/atom.mk</code></strong></p>
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := helloworld-c
+LOCAL_DESCRIPTION := Hello World example in C
+LOCAL_CATEGORY_PATH := examples
+
+LOCAL_SRC_FILES := \
+    src/helloworld.c
+
+LOCAL_CFLAGS := -Wall -Werror
+
+include $(BUILD_EXECUTABLE)
+</pre>
+
+<h3>HelloWorld in C++</h3>
+
+<p><strong>File: <code>hello_cpp/src/helloworld.cpp</code></strong></p>
+<pre>
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+
+int main(int argc, char *argv[])
+{
+    std::string message = "Hello, World from C++!";
+    std::cout &lt;&lt; message &lt;&lt; std::endl;
+    return 0;
+}
+</pre>
+
+<p><strong>File: <code>hello_cpp/atom.mk</code></strong></p>
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := helloworld-cpp
+LOCAL_DESCRIPTION := Hello World example in C++
+LOCAL_CATEGORY_PATH := examples
+
+LOCAL_SRC_FILES := \
+    src/helloworld.cpp
+
+LOCAL_CXXFLAGS := -Wall -Werror -std=c++11
+
+include $(BUILD_EXECUTABLE)
+</pre>
+
+<h3>Product Configuration</h3>
+
+<p><strong>File: <code>config/product.mk</code></strong></p>
+<pre>
+# Target configuration for native Linux build
+TARGET_OS := linux
+TARGET_OS_FLAVOUR := native
+TARGET_LIBC := native
+</pre>
+
+<h3>Build Script</h3>
+
+<p><strong>File: <code>build.sh</code></strong></p>
+<pre>
+#!/bin/bash
+
+readonly TOP_DIR=$(cd "$(dirname "$0")" &amp;&amp; pwd)
+
+export TARGET_PRODUCT="helloworld"
+export TARGET_PRODUCT_VARIANT="native"
+export TARGET_CONFIG_DIR="${TOP_DIR}/config"
+export TARGET_OUT="${TOP_DIR}/out"
+export ALCHEMY_USE_COLORS=1
+
+# Build using alchemake
+${TOP_DIR}/alchemy/scripts/alchemake.py \
+    -f ${TOP_DIR}/alchemy/main.mk \
+    "$@"
+</pre>
+
+<h3>Building the Examples</h3>
+
+<p><strong>1. Make the build script executable:</strong></p>
+<pre>
+chmod +x build.sh
+</pre>
+
+<p><strong>2. Build all modules:</strong></p>
+<pre>
+./build.sh all
+</pre>
+
+<p><strong>3. Build a specific module:</strong></p>
+<pre>
+./build.sh helloworld-c
+./build.sh helloworld-cpp
+</pre>
+
+<p><strong>4. Run the executables:</strong></p>
+<pre>
+./out/staging/usr/bin/helloworld-c
+./out/staging/usr/bin/helloworld-cpp
+</pre>
+
+<p><strong>5. Clean a module:</strong></p>
+<pre>
+./build.sh helloworld-c-clean
+./build.sh helloworld-cpp-dirclean
+</pre>
+
+<p><strong>6. Configure modules (optional):</strong></p>
+<pre>
+./build.sh config
+</pre>
+
+<h3>Advanced: HelloWorld with Library Dependency</h3>
+
+<p><strong>File: <code>hello_lib/atom.mk</code></strong> - A shared library</p>
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libhello
+LOCAL_DESCRIPTION := Hello shared library
+LOCAL_CATEGORY_PATH := examples/libs
+
+LOCAL_SRC_FILES := \
+    src/hello.c
+
+LOCAL_EXPORT_C_INCLUDES := \
+    $(LOCAL_PATH)/include
+
+include $(BUILD_SHARED_LIBRARY)
+</pre>
+
+<p><strong>File: <code>hello_app/atom.mk</code></strong> - Application using the library</p>
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := hello-app
+LOCAL_DESCRIPTION := Application using libhello
+LOCAL_CATEGORY_PATH := examples
+
+LOCAL_SRC_FILES := \
+    src/main.c
+
+LOCAL_LIBRARIES := \
+    libhello
+
+include $(BUILD_EXECUTABLE)
+</pre>
+
+<h3>Useful Build Commands</h3>
+
+<table>
+<thead>
+<tr><th>Command</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>./build.sh all</code></td><td>Build all configured modules</td></tr>
+<tr><td><code>./build.sh &lt;module&gt;</code></td><td>Build specific module with dependencies</td></tr>
+<tr><td><code>./build.sh &lt;module&gt;-clean</code></td><td>Clean module (keep sources for external)</td></tr>
+<tr><td><code>./build.sh &lt;module&gt;-dirclean</code></td><td>Remove entire build directory</td></tr>
+<tr><td><code>./build.sh config</code></td><td>Configure modules (kconfig UI)</td></tr>
+<tr><td><code>./build.sh config-update</code></td><td>Update configuration silently</td></tr>
+<tr><td><code>./build.sh help</code></td><td>Show Alchemy help</td></tr>
+<tr><td><code>./build.sh final</code></td><td>Generate final stripped tree</td></tr>
+<tr><td><code>./build.sh image</code></td><td>Generate filesystem image</td></tr>
+<tr><td><code>./build.sh V=1 &lt;module&gt;</code></td><td>Verbose build (show commands)</td></tr>
+<tr><td><code>./build.sh -j8 all</code></td><td>Parallel build with 8 jobs</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h2>Building the Linux Kernel</h2>
+
+<p><code>Alchemy</code> provides built-in support for compiling the Linux kernel as a module.
+The kernel is treated as an external module with class <code>LINUX</code>.</p>
+
+<h3>Kernel Module Architecture</h3>
+
+<div class="mermaid">
+flowchart TB
+    subgraph LinuxBuild["🐧 LINUX KERNEL BUILD"]
+        direction TB
+        
+        subgraph Config["Configuration"]
+            C1["defconfig"] --> C2["menuconfig"]
+            C2 --> C3[".config"]
+        end
+        
+        subgraph Build["Build Process"]
+            B1["vmlinux"] --> B2["zImage/bzImage"]
+            B2 --> B3["Device Trees"]
+            B3 --> B4["Modules .ko"]
+        end
+        
+        subgraph Output["Output"]
+            O1["boot/"] 
+            O2["lib/modules/"]
+        end
+        
+        C3 --> B1
+        B2 --> O1
+        B4 --> O2
+    end
+</div>
+
+<h3>Linux Kernel atom.mk Example</h3>
+
+<p><strong>File: <code>linux/atom.mk</code></strong></p>
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := linux
+LOCAL_DESCRIPTION := Linux Kernel
+LOCAL_CATEGORY_PATH := system/kernel
+
+# Path to kernel source
+LOCAL_LINUX_SRC := $(LOCAL_PATH)/kernel
+
+# Default configuration file
+LOCAL_LINUX_DEFCONFIG := my_board_defconfig
+
+# Additional configuration fragments (optional)
+LOCAL_LINUX_CONFIG_FILES := \
+    $(LOCAL_PATH)/config/debug.cfg \
+    $(LOCAL_PATH)/config/drivers.cfg
+
+# Device tree files to build
+LOCAL_LINUX_DEVICE_TREE_NAMES := \
+    my_board.dtb \
+    my_board_v2.dtb
+
+include $(BUILD_LINUX)
+</pre>
+
+<h3>Kernel Configuration Variables</h3>
+
+<p>The following <code>TARGET_XXX</code> variables control kernel compilation:</p>
+
+<table>
+<thead>
+<tr><th>Variable</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>TARGET_LINUX_DIR</code></td><td>Path to kernel source tree</td></tr>
+<tr><td><code>TARGET_LINUX_CROSS</code></td><td>Cross-compiler prefix for kernel</td></tr>
+<tr><td><code>TARGET_LINUX_IMAGE</code></td><td>Image type: <code>zImage</code>, <code>bzImage</code>, <code>Image</code></td></tr>
+<tr><td><code>TARGET_LINUX_DEFCONFIG</code></td><td>Default kernel configuration</td></tr>
+<tr><td><code>TARGET_LINUX_DEVICE_TREE_NAMES</code></td><td>List of DTB files to install</td></tr>
+<tr><td><code>TARGET_LINUX_GENERATE_UIMAGE</code></td><td>Generate U-Boot image (0/1)</td></tr>
+<tr><td><code>TARGET_LINUX_LINK_CPIO_IMAGE</code></td><td>Link initramfs in kernel (0/1)</td></tr>
+<tr><td><code>TARGET_LINUX_MAKE_BUILD_ARGS</code></td><td>Extra make arguments</td></tr>
+</tbody>
+</table>
+
+<h3>Kernel Build Commands</h3>
+
+<pre>
+# Build kernel
+./build.sh linux
+
+# Configure kernel (menuconfig)
+./build.sh linux-menuconfig
+
+# Clean kernel
+./build.sh linux-clean
+
+# Full clean (remove build directory)
+./build.sh linux-dirclean
+
+# Build only device trees
+./build.sh linux-dtbs
+</pre>
+
+<h3>Building Kernel Modules (Out-of-tree)</h3>
+
+<p>For external kernel modules (drivers), use the <code>LINUX_MODULE</code> class:</p>
+
+<p><strong>File: <code>my_driver/atom.mk</code></strong></p>
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := my-driver
+LOCAL_DESCRIPTION := My custom kernel driver
+LOCAL_CATEGORY_PATH := system/drivers
+
+# Kernel module source files
+LOCAL_SRC_FILES := \
+    src/driver_main.c \
+    src/driver_ops.c
+
+# Dependencies on kernel
+LOCAL_LIBRARIES := linux
+
+include $(BUILD_LINUX_MODULE)
+</pre>
+
+<h3>Complete Example: HelloWorld Kernel Driver</h3>
+
+<p>This example shows how to create a complete "Hello World" kernel module with Alchemy.</p>
+
+<h4>Project Structure</h4>
+
+<pre>
+hello_driver/
+├── atom.mk              # Alchemy module definition
+├── Kbuild               # Kernel build file (optional)
+└── src/
+    └── hello_module.c   # Driver source code
+</pre>
+
+<h4>Driver Source Code</h4>
+
+<p><strong>File: <code>hello_driver/src/hello_module.c</code></strong></p>
+<pre>
+/*
+ * Hello World Linux Kernel Module
+ * Built with Alchemy build system
+ */
+
+#include &lt;linux/init.h&gt;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Your Name");
+MODULE_DESCRIPTION("Hello World Kernel Module");
+MODULE_VERSION("1.0");
+
+static char *name = "World";
+module_param(name, charp, S_IRUGO);
+MODULE_PARM_DESC(name, "The name to display in hello message");
+
+static int __init hello_init(void)
+{
+    printk(KERN_INFO "Hello, %s! Module loaded.\n", name);
+    return 0;
+}
+
+static void __exit hello_exit(void)
+{
+    printk(KERN_INFO "Goodbye, %s! Module unloaded.\n", name);
+}
+
+module_init(hello_init);
+module_exit(hello_exit);
+</pre>
+
+<h4>Alchemy Module Definition</h4>
+
+<p><strong>File: <code>hello_driver/atom.mk</code></strong></p>
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := hello-driver
+LOCAL_DESCRIPTION := Hello World kernel module example
+LOCAL_CATEGORY_PATH := examples/drivers
+
+# Source files for the kernel module
+LOCAL_SRC_FILES := \
+    src/hello_module.c
+
+# Dependency on Linux kernel (must be built first)
+LOCAL_LIBRARIES := linux
+
+# Optional: Additional compiler flags for kernel module
+LOCAL_CFLAGS := -DDEBUG
+
+include $(BUILD_LINUX_MODULE)
+</pre>
+
+<h4>Optional Kbuild File</h4>
+
+<p>If you need more control over the kernel build, create a <code>Kbuild</code> file:</p>
+
+<p><strong>File: <code>hello_driver/Kbuild</code></strong></p>
+<pre>
+# Kernel module name (without .ko extension)
+obj-m := hello_module.o
+
+# For multi-file modules:
+# hello_module-objs := file1.o file2.o file3.o
+
+# Extra compiler flags
+ccflags-y := -DDEBUG -Wall
+</pre>
+
+<h4>Building and Testing</h4>
+
+<pre>
+# Build the kernel module
+./build.sh hello-driver
+
+# The module will be in:
+# out/staging/lib/modules/&lt;kernel-version&gt;/extra/hello_module.ko
+
+# Clean the module
+./build.sh hello-driver-clean
+
+# Full clean
+./build.sh hello-driver-dirclean
+</pre>
+
+<h4>Loading and Testing the Module</h4>
+
+<p>On the target device:</p>
+
+<pre>
+# Load the module
+sudo insmod /lib/modules/$(uname -r)/extra/hello_module.ko
+
+# Load with parameter
+sudo insmod hello_module.ko name="Alchemy"
+
+# Check kernel messages
+dmesg | tail
+# Output: Hello, World! Module loaded.
+
+# View module info
+modinfo hello_module.ko
+
+# List loaded modules
+lsmod | grep hello
+
+# Unload the module
+sudo rmmod hello_module
+
+# Check unload message
+dmesg | tail
+# Output: Goodbye, World! Module unloaded.
+</pre>
+
+<h4>Advanced: Character Device Driver</h4>
+
+<p>A more complete example with a character device:</p>
+
+<p><strong>File: <code>chardev_driver/src/chardev.c</code></strong></p>
+<pre>
+#include &lt;linux/init.h&gt;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/fs.h&gt;
+#include &lt;linux/uaccess.h&gt;
+
+#define DEVICE_NAME "hello_chardev"
+#define BUF_SIZE 256
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Your Name");
+MODULE_DESCRIPTION("Hello CharDev Driver");
+
+static int major_num;
+static char msg_buffer[BUF_SIZE];
+static int msg_len;
+
+static int dev_open(struct inode *inodep, struct file *filep)
+{
+    printk(KERN_INFO "hello_chardev: Device opened\n");
+    return 0;
+}
+
+static ssize_t dev_read(struct file *filep, char *buffer,
+                        size_t len, loff_t *offset)
+{
+    int bytes_read = 0;
+    if (*offset &gt;= msg_len)
+        return 0;
+    bytes_read = min(len, (size_t)(msg_len - *offset));
+    if (copy_to_user(buffer, msg_buffer + *offset, bytes_read))
+        return -EFAULT;
+    *offset += bytes_read;
+    return bytes_read;
+}
+
+static ssize_t dev_write(struct file *filep, const char *buffer,
+                         size_t len, loff_t *offset)
+{
+    if (len &gt; BUF_SIZE - 1)
+        len = BUF_SIZE - 1;
+    if (copy_from_user(msg_buffer, buffer, len))
+        return -EFAULT;
+    msg_buffer[len] = '\0';
+    msg_len = len;
+    printk(KERN_INFO "hello_chardev: Received %zu bytes\n", len);
+    return len;
+}
+
+static int dev_release(struct inode *inodep, struct file *filep)
+{
+    printk(KERN_INFO "hello_chardev: Device closed\n");
+    return 0;
+}
+
+static struct file_operations fops = {
+    .open = dev_open,
+    .read = dev_read,
+    .write = dev_write,
+    .release = dev_release,
+};
+
+static int __init chardev_init(void)
+{
+    major_num = register_chrdev(0, DEVICE_NAME, &amp;fops);
+    if (major_num &lt; 0) {
+        printk(KERN_ALERT "Failed to register device\n");
+        return major_num;
+    }
+    strcpy(msg_buffer, "Hello from kernel!\n");
+    msg_len = strlen(msg_buffer);
+    printk(KERN_INFO "hello_chardev: Registered with major %d\n", major_num);
+    printk(KERN_INFO "Create device: mknod /dev/%s c %d 0\n",
+           DEVICE_NAME, major_num);
+    return 0;
+}
+
+static void __exit chardev_exit(void)
+{
+    unregister_chrdev(major_num, DEVICE_NAME);
+    printk(KERN_INFO "hello_chardev: Unregistered\n");
+}
+
+module_init(chardev_init);
+module_exit(chardev_exit);
+</pre>
+
+<p><strong>File: <code>chardev_driver/atom.mk</code></strong></p>
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := hello-chardev
+LOCAL_DESCRIPTION := Hello World character device driver
+LOCAL_CATEGORY_PATH := examples/drivers
+
+LOCAL_SRC_FILES := src/chardev.c
+LOCAL_LIBRARIES := linux
+
+include $(BUILD_LINUX_MODULE)
+</pre>
+
+<h3>Product Configuration for Kernel Build</h3>
+
+<p><strong>File: <code>config/product.mk</code></strong></p>
+<pre>
+# Kernel configuration
+TARGET_LINUX_DIR := $(TOP_DIR)/kernel
+TARGET_LINUX_CROSS := /opt/toolchain/bin/arm-linux-gnueabihf-
+TARGET_LINUX_IMAGE := zImage
+TARGET_LINUX_GENERATE_UIMAGE := 1
+
+# Device trees to install in boot/
+TARGET_LINUX_DEVICE_TREE_NAMES := \
+    my_board.dtb
+
+# Additional kernel make arguments
+TARGET_LINUX_MAKE_BUILD_ARGS := \
+    INSTALL_DTBS_PATH="$(TARGET_OUT_STAGING)/boot"
+</pre>
+
+<hr />
+
+<h2>Building for Android</h2>
+
+<p><code>Alchemy</code> supports building applications and libraries for Android targets using
+either the Android NDK or a custom Android build system.</p>
+
+<h3>Android Build Architecture</h3>
+
+<div class="mermaid">
+flowchart TB
+    subgraph AndroidBuild["🤖 ANDROID BUILD"]
+        direction TB
+        
+        subgraph NDK["Android NDK Mode"]
+            N1["NDK Toolchain"] --> N2["Bionic libc"]
+            N2 --> N3["Native Libraries"]
+            N3 --> N4["JNI .so"]
+        end
+        
+        subgraph Custom["Custom Android"]
+            A1["Alchemy-android"] --> A2["Custom Toolchain"]
+            A2 --> A3["System Libraries"]
+        end
+        
+        subgraph Output["Output"]
+            O1["libs/armeabi-v7a/"]
+            O2["libs/arm64-v8a/"]
+        end
+        
+        N4 --> O1
+        N4 --> O2
+        A3 --> O1
+        A3 --> O2
+    end
+</div>
+
+<h3>Android Target Configuration</h3>
+
+<p><strong>File: <code>config/product.mk</code></strong> for Android NDK:</p>
+<pre>
+# Android target configuration
+TARGET_OS := linux
+TARGET_OS_FLAVOUR := android
+TARGET_LIBC := bionic
+TARGET_ARCH := arm
+
+# Android NDK configuration
+TARGET_ANDROID_NDK := /opt/android-ndk-r21e
+TARGET_ANDROID_SDK := /opt/android-sdk
+TARGET_ANDROID_APILEVEL := 21
+TARGET_ANDROID_MINAPILEVEL := 16
+
+# C++ STL choice: gnustl, libc++, stlport
+TARGET_ANDROID_STL := libc++
+
+# Use shared STL for multiple shared libraries
+TARGET_ANDROID_SHARED_STL := 1
+</pre>
+
+<h3>Android Build Script</h3>
+
+<p><strong>File: <code>build-android.sh</code></strong></p>
+<pre>
+#!/bin/bash
+
+readonly TOP_DIR=$(cd "$(dirname "$0")" &amp;&amp; pwd)
+
+export TARGET_PRODUCT="myapp"
+export TARGET_PRODUCT_VARIANT="android"
+export TARGET_CONFIG_DIR="${TOP_DIR}/config-android"
+export TARGET_OUT="${TOP_DIR}/out-android"
+
+# Android specific
+export TARGET_OS=linux
+export TARGET_OS_FLAVOUR=android
+export TARGET_ARCH=arm
+
+# NDK path
+export TARGET_ANDROID_NDK=/opt/android-ndk-r21e
+export TARGET_ANDROID_APILEVEL=21
+
+ALCHEMY_USE_COLORS=1 ${TOP_DIR}/alchemy/scripts/alchemake.py \
+    -f ${TOP_DIR}/alchemy/main.mk \
+    "$@"
+</pre>
+
+<h3>Android JNI Library Example</h3>
+
+<p><strong>File: <code>jni_module/atom.mk</code></strong></p>
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := mynativelib
+LOCAL_DESCRIPTION := JNI native library for Android
+LOCAL_CATEGORY_PATH := android/jni
+
+LOCAL_SRC_FILES := \
+    src/jni_wrapper.c \
+    src/native_impl.cpp
+
+# C and C++ flags
+LOCAL_CFLAGS := -Wall -DANDROID
+LOCAL_CXXFLAGS := -std=c++14 -frtti -fexceptions
+
+# Link with Android libraries
+LOCAL_LDLIBS := -llog -landroid -lGLESv2 -lEGL
+
+# Dependencies
+LOCAL_LIBRARIES := \
+    mycore-lib
+
+include $(BUILD_SHARED_LIBRARY)
+</pre>
+
+<h3>Android Configuration Variables</h3>
+
+<table>
+<thead>
+<tr><th>Variable</th><th>Description</th><th>Default</th></tr>
+</thead>
+<tbody>
+<tr><td><code>TARGET_ANDROID_NDK</code></td><td>Path to Android NDK</td><td>Auto-detect</td></tr>
+<tr><td><code>TARGET_ANDROID_SDK</code></td><td>Path to Android SDK</td><td>Auto-detect</td></tr>
+<tr><td><code>TARGET_ANDROID_APILEVEL</code></td><td>Target API level</td><td>17</td></tr>
+<tr><td><code>TARGET_ANDROID_MINAPILEVEL</code></td><td>Minimum API level</td><td>Same as APILEVEL</td></tr>
+<tr><td><code>TARGET_ANDROID_TOOLCHAIN</code></td><td>Toolchain name</td><td>Auto</td></tr>
+<tr><td><code>TARGET_ANDROID_STL</code></td><td>STL implementation</td><td>gnustl</td></tr>
+<tr><td><code>TARGET_ANDROID_SHARED_STL</code></td><td>Use shared STL (0/1)</td><td>0</td></tr>
+</tbody>
+</table>
+
+<h3>Multi-Architecture Build</h3>
+
+<p>To build for multiple Android architectures, create separate build configurations:</p>
+
+<p><strong>File: <code>build-android-arm.sh</code></strong></p>
+<pre>
+export TARGET_ARCH=arm
+export TARGET_PRODUCT_VARIANT="android-arm"
+export TARGET_OUT="${TOP_DIR}/out-android-arm"
+# ... rest of configuration
+</pre>
+
+<p><strong>File: <code>build-android-arm64.sh</code></strong></p>
+<pre>
+export TARGET_ARCH=aarch64
+export TARGET_PRODUCT_VARIANT="android-arm64"
+export TARGET_OUT="${TOP_DIR}/out-android-arm64"
+# ... rest of configuration
+</pre>
+
+<h3>Android Build Commands</h3>
+
+<pre>
+# Build all Android modules
+./build-android.sh all
+
+# Build specific module
+./build-android.sh mynativelib
+
+# Generate final tree with stripped binaries
+./build-android.sh final
+
+# Copy output to Android project
+cp -r out-android/staging/usr/lib/*.so android_app/app/src/main/jniLibs/armeabi-v7a/
+</pre>
+
+<h3>Android vs Native Conditional Compilation</h3>
+
+<p>In your <code>atom.mk</code>, you can have conditional code based on target:</p>
+
+<pre>
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := mylib
+LOCAL_DESCRIPTION := Cross-platform library
+
+LOCAL_SRC_FILES := \
+    src/common.c
+
+# Android-specific sources and flags
+ifeq ("$(TARGET_OS_FLAVOUR)","android")
+    LOCAL_SRC_FILES += src/android_impl.c
+    LOCAL_CFLAGS += -DANDROID_BUILD
+    LOCAL_LDLIBS += -llog
+else
+    LOCAL_SRC_FILES += src/linux_impl.c
+endif
+
+include $(BUILD_SHARED_LIBRARY)
+</pre>
 
 <hr />
 

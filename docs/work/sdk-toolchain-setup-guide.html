@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDK & Toolchain Setup Guide - Alchemy</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root { --primary: #3498db; --success: #27ae60; --warning: #f39c12; --danger: #e74c3c; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f8f9fa; color: #2c3e50; line-height: 1.6; }
+        h1 { color: var(--primary); border-bottom: 3px solid var(--primary); padding-bottom: 15px; }
+        h2 { color: #34495e; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 40px; }
+        h3 { color: #7f8c8d; }
+        .mermaid { background: white; padding: 25px; border-radius: 12px; margin: 25px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        th, td { border: 1px solid #e1e8ed; padding: 14px 18px; text-align: left; }
+        th { background: linear-gradient(135deg, var(--primary), #2980b9); color: white; font-weight: 600; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        tr:hover { background: #eef5fc; }
+        code { background: #ecf0f1; padding: 3px 8px; border-radius: 4px; font-family: 'Fira Code', 'Consolas', monospace; font-size: 0.9em; color: #c0392b; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 10px; overflow-x: auto; margin: 20px 0; }
+        pre code { background: none; color: #ecf0f1; padding: 0; }
+        .box { background: white; padding: 25px; margin: 20px 0; border-radius: 12px; border-left: 5px solid var(--primary); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .box.success { border-left-color: var(--success); }
+        .box.warning { border-left-color: var(--warning); background: #fef9e7; }
+        .box.danger { border-left-color: var(--danger); background: #fdf2f2; }
+        .step { display: flex; align-items: flex-start; margin: 15px 0; }
+        .step-num { background: var(--primary); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; flex-shrink: 0; }
+        .toc { background: white; padding: 20px 30px; border-radius: 12px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .toc ul { list-style: none; padding-left: 20px; }
+        .toc li { margin: 8px 0; }
+        .toc a { color: var(--primary); text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        hr { border: none; border-top: 2px solid #ecf0f1; margin: 40px 0; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 SDK & Toolchain Setup Guide for Alchemy</h1>
+
+    <div class="toc">
+        <h3>📋 Table of Contents</h3>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#toolchain">Part 1: Toolchain Configuration</a></li>
+            <li><a href="#sdk">Part 2: SDK Configuration</a></li>
+            <li><a href="#example">Complete Example</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+        </ul>
+    </div>
+
+    <h2 id="overview">Overview</h2>
+    <p>This guide explains how to configure and use <strong>toolchains</strong> (cross-compilers) and <strong>SDKs</strong> (pre-built libraries/binaries) in the Alchemy build system.</p>
+
+    <div class="mermaid">
+flowchart LR
+    subgraph Toolchain["🔧 TOOLCHAIN"]
+        TC[Cross-Compiler]
+        TC --> CC[gcc/clang]
+        TC --> LD[Linker]
+        TC --> AR[Archiver]
+    end
+    
+    subgraph SDK["📦 SDK"]
+        SK[Pre-built Packages]
+        SK --> LIB[Libraries]
+        SK --> HDR[Headers]
+        SK --> BIN[Binaries]
+    end
+    
+    subgraph Alchemy["⚗️ ALCHEMY"]
+        BUILD[Build System]
+    end
+    
+    Toolchain --> Alchemy
+    SDK --> Alchemy
+    Alchemy --> OUT[Target Output]
+    </div>
+
+    <hr>
+
+    <h2 id="toolchain">Part 1: Toolchain Configuration</h2>
+
+    <h3>Architecture Overview</h3>
+    <div class="mermaid">
+flowchart TB
+    subgraph Selection["1️⃣ Toolchain Selection"]
+        ENV[Environment Variables] --> SEL[toolchains/selection.mk]
+        SEL --> |TARGET_CROSS| CROSS[Cross-Compiler Prefix]
+        SEL --> |TARGET_CC| COMPILER[Compiler Selection]
+    end
+    
+    subgraph Setup["2️⃣ Toolchain Setup"]
+        CROSS --> FLAGS[toolchains/flags.mk]
+        FLAGS --> CFLAGS[TARGET_GLOBAL_CFLAGS]
+        FLAGS --> LDFLAGS[TARGET_GLOBAL_LDFLAGS]
+    end
+    
+    subgraph Arch["3️⃣ Architecture Specific"]
+        CFLAGS --> ARCH[flags-arm.mk<br/>flags-aarch64.mk<br/>flags-x64.mk]
+    end
+    
+    subgraph Final["4️⃣ Final Configuration"]
+        ARCH --> PRODUCT[Product toolchain-setup.mk]
+        SDK_SETUP[SDK toolchain-setup.mk] --> PRODUCT
+    end
+    </div>
+
+    <h3>Key Variables</h3>
+    <table>
+        <tr><th>Variable</th><th>Description</th><th>Example</th></tr>
+        <tr><td><code>TARGET_CROSS</code></td><td>Toolchain prefix</td><td><code>arm-linux-gnueabihf-</code></td></tr>
+        <tr><td><code>TARGET_CC</code></td><td>C compiler</td><td><code>$(TARGET_CROSS)gcc</code></td></tr>
+        <tr><td><code>TARGET_CXX</code></td><td>C++ compiler</td><td><code>$(TARGET_CROSS)g++</code></td></tr>
+        <tr><td><code>TARGET_AR</code></td><td>Archiver</td><td><code>$(TARGET_CROSS)ar</code></td></tr>
+        <tr><td><code>TARGET_ARCH</code></td><td>Target architecture</td><td><code>arm</code>, <code>aarch64</code>, <code>x64</code></td></tr>
+        <tr><td><code>TARGET_OS</code></td><td>Target OS</td><td><code>linux</code>, <code>darwin</code>, <code>windows</code></td></tr>
+        <tr><td><code>TARGET_LIBC</code></td><td>C library</td><td><code>glibc</code>, <code>musl</code>, <code>eglibc</code></td></tr>
+    </table>
+
+    <h3>Example: Configure ARM Cross-Toolchain</h3>
+
+    <div class="box">
+        <h4>Step 1: Set Environment Variables</h4>
+        <pre><code># In your shell or product configuration
+export ALCHEMY_TARGET_CROSS=arm-linux-gnueabihf-
+export ALCHEMY_TARGET_ARCH=arm</code></pre>
+    </div>
+
+    <div class="box">
+        <h4>Step 2: Create Product Configuration</h4>
+        <p>Create <code>products/my-product/toolchain-setup.mk</code>:</p>
+        <pre><code># Toolchain prefix (path to cross-compiler)
+TARGET_CROSS := /opt/toolchains/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+
+# Architecture settings
+TARGET_ARCH := arm
+TARGET_CPU := cortex-a9
+TARGET_FLOAT_ABI := hard
+
+# Global compilation flags
+TARGET_GLOBAL_CFLAGS += \
+    -mcpu=$(TARGET_CPU) \
+    -mfpu=neon \
+    -mfloat-abi=$(TARGET_FLOAT_ABI)
+
+# Global linker flags
+TARGET_GLOBAL_LDFLAGS += \
+    -mcpu=$(TARGET_CPU)</code></pre>
+    </div>
+
+    <hr>
+
+    <h2 id="sdk">Part 2: SDK Configuration</h2>
+
+    <h3>SDK Workflow</h3>
+    <div class="mermaid">
+flowchart TB
+    subgraph Generate["📦 SDK Generation"]
+        BUILD1[Build Product A] --> STAGING[Staging Directory]
+        STAGING --> |make sdk| SDK_OUT[SDK Package]
+        SDK_OUT --> TAR[sdk.tar.gz]
+    end
+    
+    subgraph Use["🔧 SDK Usage"]
+        TAR --> EXTRACT[Extract SDK]
+        EXTRACT --> SDK_DIR[SDK Directory]
+        SDK_DIR --> |TARGET_SDK_DIRS| BUILD2[Build Product B]
+    end
+    
+    subgraph Content["📋 SDK Contents"]
+        SDK_DIR --> ATOM[atom.mk<br/>Module definitions]
+        SDK_DIR --> SETUP[setup.mk<br/>Toolchain config]
+        SDK_DIR --> HOST[host/<br/>Host tools]
+        SDK_DIR --> STAGING2[staging/<br/>Target libs+headers]
+    end
+    </div>
+
+    <h3>Generating an SDK</h3>
+    <pre><code># Build your base product first
+./build.sh -p base-product -t all -j8
+
+# Generate SDK
+make sdk
+
+# Output locations:
+#   - $(TARGET_OUT)/sdk/           <- SDK directory
+#   - $(TARGET_OUT)/sdk-*.tar.gz   <- SDK archive</code></pre>
+
+    <h3>SDK Directory Structure</h3>
+    <div class="box">
+        <pre><code>sdk/
+├── atom.mk                 # Module definitions (auto-generated)
+├── setup.mk                # Toolchain setup (auto-generated)
+├── toolchain-setup.mk      # Toolchain variables
+├── host/                   # Host tools
+│   ├── bin/
+│   └── lib/
+└── staging/                # Target libraries and headers
+    ├── lib/
+    └── usr/
+        ├── include/
+        └── lib/</code></pre>
+    </div>
+
+    <h3>Using an SDK</h3>
+    <div class="grid">
+        <div class="box success">
+            <h4>Method 1: Environment Variable</h4>
+            <pre><code>export ALCHEMY_TARGET_SDK_DIRS=/path/to/sdk
+./build.sh -p my-product -t all -j8</code></pre>
+        </div>
+        <div class="box success">
+            <h4>Method 2: Product Configuration</h4>
+            <pre><code># In products/my-product/setup.mk
+TARGET_SDK_DIRS := /path/to/sdk
+
+# Multiple SDKs
+TARGET_SDK_DIRS := \
+    /path/to/sdk1 \
+    /path/to/sdk2</code></pre>
+        </div>
+    </div>
+
+    <hr>
+
+    <h2 id="example">Complete Example: Cross-compilation with SDK</h2>
+
+    <h3>Scenario</h3>
+    <p>Build an application for ARM target using a cross-toolchain and pre-built SDK.</p>
+
+    <div class="mermaid">
+flowchart TB
+    subgraph Host["🖥️ Host Machine - x86_64"]
+        ALCHEMY[Alchemy Build System]
+        TOOLCHAIN[ARM Toolchain<br/>/opt/arm-toolchain]
+        SDK[Pre-built SDK<br/>/opt/arm-sdk]
+    end
+    
+    subgraph Config["⚙️ Configuration"]
+        PRODUCT[products/my-arm-app/]
+        SETUP[setup.mk]
+        TC_SETUP[toolchain-setup.mk]
+    end
+    
+    subgraph Build["🔨 Build Process"]
+        SRC[Source Code<br/>atom.mk] --> COMPILE
+        TOOLCHAIN --> COMPILE[Cross-Compile]
+        SDK --> |Headers + Libs| COMPILE
+        COMPILE --> OUT[ARM Binary]
+    end
+    
+    Host --> Config
+    Config --> Build
+    </div>
+
+    <h3>Step-by-Step Setup</h3>
+
+    <div class="step">
+        <div class="step-num">1</div>
+        <div>
+            <h4>Install Toolchain</h4>
+            <pre><code>sudo mkdir -p /opt/toolchains
+cd /opt/toolchains
+wget https://releases.linaro.org/.../gcc-linaro-7.5.0-x86_64_aarch64-linux-gnu.tar.xz
+tar xf gcc-linaro-7.5.0-x86_64_aarch64-linux-gnu.tar.xz</code></pre>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-num">2</div>
+        <div>
+            <h4>Create <code>products/my-arm-app/setup.mk</code></h4>
+            <pre><code>TARGET_PRODUCT := my-arm-app
+TARGET_OS := linux
+TARGET_ARCH := aarch64
+TARGET_SDK_DIRS := /opt/sdk/arm-base-sdk
+TARGET_IMAGE_FORMAT := tar.gz</code></pre>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-num">3</div>
+        <div>
+            <h4>Create <code>products/my-arm-app/toolchain-setup.mk</code></h4>
+            <pre><code>TOOLCHAIN_ROOT := /opt/toolchains/gcc-linaro-7.5.0-x86_64_aarch64-linux-gnu
+TARGET_CROSS := $(TOOLCHAIN_ROOT)/bin/aarch64-linux-gnu-
+TARGET_CPU := cortex-a53
+
+TARGET_GLOBAL_CFLAGS += -mcpu=$(TARGET_CPU)
+TARGET_GLOBAL_LDFLAGS += -mcpu=$(TARGET_CPU)</code></pre>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-num">4</div>
+        <div>
+            <h4>Create Application Module (<code>my-app/atom.mk</code>)</h4>
+            <pre><code>LOCAL_PATH := $(call my-dir)
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := my-arm-app
+LOCAL_SRC_FILES := main.c utils.c
+LOCAL_LIBRARIES := opencv_core pthread
+
+include $(BUILD_EXECUTABLE)</code></pre>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-num">5</div>
+        <div>
+            <h4>Build</h4>
+            <pre><code>./build.sh -p my-arm-app -t my-arm-app -j$(nproc)
+make image
+
+# Verify
+file out/my-arm-app-release/staging/usr/bin/my-arm-app
+# → ELF 64-bit LSB executable, ARM aarch64</code></pre>
+        </div>
+    </div>
+
+    <hr>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+
+    <div class="mermaid">
+flowchart TB
+    subgraph Issues["⚠️ Common Problems"]
+        I1[Compiler not found]
+        I2[Missing libraries]
+        I3[Wrong architecture]
+        I4[SDK incompatible]
+    end
+    
+    subgraph Solutions["✅ Solutions"]
+        S1[Check TARGET_CROSS path]
+        S2[Verify TARGET_SDK_DIRS]
+        S3[Check TARGET_ARCH]
+        S4[Rebuild SDK with same toolchain]
+    end
+    
+    I1 --> S1
+    I2 --> S2
+    I3 --> S3
+    I4 --> S4
+    </div>
+
+    <h3>Debug Commands</h3>
+    <table>
+        <tr><th>Command</th><th>Purpose</th></tr>
+        <tr><td><code>make dump-config | grep TARGET_</code></td><td>Show all TARGET variables</td></tr>
+        <tr><td><code>make dump-config | grep -E "(CROSS|CC|CXX)"</code></td><td>Show toolchain info</td></tr>
+        <tr><td><code>make dump-config | grep SDK</code></td><td>Show SDK configuration</td></tr>
+        <tr><td><code>make V=1 my-module</code></td><td>Verbose build</td></tr>
+        <tr><td><code>make &lt;module&gt;-depends</code></td><td>Check module dependencies</td></tr>
+    </table>
+
+    <h3>Quick Reference</h3>
+    <div class="box warning">
+        <table>
+            <tr><th>Task</th><th>Command/Variable</th></tr>
+            <tr><td>Set toolchain</td><td><code>TARGET_CROSS := /path/to/prefix-</code></td></tr>
+            <tr><td>Set architecture</td><td><code>TARGET_ARCH := arm</code></td></tr>
+            <tr><td>Add SDK</td><td><code>TARGET_SDK_DIRS := /path/to/sdk</code></td></tr>
+            <tr><td>Generate SDK</td><td><code>make sdk</code></td></tr>
+            <tr><td>Add compiler flags</td><td><code>TARGET_GLOBAL_CFLAGS += -flag</code></td></tr>
+            <tr><td>Debug config</td><td><code>make dump-config</code></td></tr>
+        </table>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+</body>
+</html>
