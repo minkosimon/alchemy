@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dragonwing QCS6490 - Alchemy SDK Setup Guide</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #22c55e;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-code: #0d1117;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-dark));
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin: 5px;
+        }
+
+        .badge-primary { background: var(--primary); }
+        .badge-secondary { background: var(--secondary); }
+        .badge-accent { background: var(--accent); color: #000; }
+
+        h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin: 50px 0 25px 0;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        h3 {
+            color: var(--text-primary);
+            font-size: 1.4rem;
+            margin: 30px 0 15px 0;
+        }
+
+        h4 {
+            color: var(--secondary);
+            font-size: 1.1rem;
+            margin: 20px 0 10px 0;
+        }
+
+        p { margin-bottom: 15px; color: var(--text-secondary); }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .card.highlight { border-left: 4px solid var(--primary); }
+        .card.success { border-left: 4px solid var(--secondary); }
+        .card.warning { border-left: 4px solid var(--accent); }
+        .card.danger { border-left: 4px solid var(--danger); }
+
+        pre {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        pre code {
+            color: #e2e8f0;
+            font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        code {
+            background: var(--bg-code);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9em;
+            color: var(--accent);
+        }
+
+        .mermaid {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 12px;
+            margin: 25px 0;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--primary-dark);
+            font-weight: 600;
+        }
+
+        tr:hover { background: rgba(99, 102, 241, 0.1); }
+
+        ul, ol {
+            margin: 15px 0 15px 25px;
+            color: var(--text-secondary);
+        }
+
+        li { margin: 8px 0; }
+
+        .step {
+            display: flex;
+            margin: 25px 0;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .step-number {
+            background: var(--primary);
+            color: white;
+            min-width: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .step-content {
+            padding: 20px;
+            flex: 1;
+        }
+
+        .step-content h4 { margin-top: 0; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .toc {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+
+        .toc h3 { margin-top: 0; color: var(--primary); }
+        .toc ul { list-style: none; margin-left: 0; }
+        .toc li { margin: 10px 0; }
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .toc a:hover { color: var(--primary); }
+
+        .file-tree {
+            background: var(--bg-code);
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .file-tree .folder { color: var(--secondary); }
+        .file-tree .file { color: var(--text-secondary); }
+        .file-tree .highlight { color: var(--accent); font-weight: bold; }
+        .file-tree .comment { color: #6b7280; font-style: italic; }
+
+        .terminal {
+            background: #000;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+        }
+
+        .terminal .prompt { color: #00ff00; }
+        .terminal .output { color: #ccc; }
+        .terminal .comment { color: #666; }
+
+        footer {
+            text-align: center;
+            padding: 40px;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            margin-top: 60px;
+        }
+
+        a { color: var(--primary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 40px 0;
+        }
+
+        @media (max-width: 768px) {
+            header h1 { font-size: 1.8rem; }
+            .grid { grid-template-columns: 1fr; }
+            .step { flex-direction: column; }
+            .step-number { min-width: auto; padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#6366f1',
+                primaryTextColor: '#f1f5f9',
+                primaryBorderColor: '#4f46e5',
+                lineColor: '#94a3b8',
+                secondaryColor: '#1e293b',
+                tertiaryColor: '#0f172a',
+                background: '#1e293b',
+                mainBkg: '#1e293b',
+                nodeBorder: '#4f46e5',
+                clusterBkg: '#1e293b',
+                clusterBorder: '#334155',
+                titleColor: '#6366f1',
+                edgeLabelBackground: '#1e293b'
+            },
+            flowchart: { useMaxWidth: true, htmlLabels: true }
+        });
+    </script>
+
+    <header>
+        <h1>🚀 Dragonwing QCS6490</h1>
+        <p>Alchemy Build System SDK Configuration Guide</p>
+        <div style="margin-top: 20px;">
+            <span class="badge badge-primary">Qualcomm QCS6490</span>
+            <span class="badge badge-secondary">AArch64</span>
+            <span class="badge badge-accent">Yocto Linux</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="toc">
+            <h3>📋 Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">1. Overview</a></li>
+                <li><a href="#prerequisites">2. Prerequisites</a></li>
+                <li><a href="#sdk-setup">3. Qualcomm SDK Setup</a></li>
+                <li><a href="#alchemy-config">4. Alchemy Configuration</a></li>
+                <li><a href="#helloworld">5. Hello World Example</a></li>
+                <li><a href="#building">6. Building & Deploying</a></li>
+                <li><a href="#troubleshooting">7. Troubleshooting</a></li>
+                <li><a href="#references">8. References</a></li>
+            </ul>
+        </div>
+
+        <h2 id="overview">1. Overview</h2>
+
+        <p>This guide explains how to configure the <strong>Alchemy Build System</strong> to cross-compile applications for the <strong>Thundercomm Dragonwing QCS6490</strong> development board using the <strong>Qualcomm Yocto extensible SDK (eSDK)</strong>.</p>
+
+        <div class="mermaid">
+flowchart LR
+    subgraph Host["🖥️ Host Machine (x86_64)"]
+        ALCHEMY["⚗️ Alchemy<br/>Build System"]
+        SDK["📦 Qualcomm<br/>Yocto eSDK"]
+    end
+    
+    subgraph Target["🎯 Target Board (AArch64)"]
+        QCS["Dragonwing<br/>QCS6490"]
+    end
+    
+    SDK --> |Cross-Compiler| ALCHEMY
+    ALCHEMY --> |Deploy| QCS
+    
+    style ALCHEMY fill:#6366f1
+    style SDK fill:#22c55e
+    style QCS fill:#f59e0b
+        </div>
+
+        <div class="grid">
+            <div class="card highlight">
+                <h4>🎯 Target Board</h4>
+                <ul>
+                    <li><strong>Board:</strong> Thundercomm Dragonwing / RUBIK Pi 3</li>
+                    <li><strong>SoC:</strong> Qualcomm QCS6490</li>
+                    <li><strong>CPU:</strong> Octa-core Kryo 670</li>
+                    <li><strong>GPU:</strong> Adreno 643</li>
+                    <li><strong>NPU:</strong> Hexagon 698 AI Engine</li>
+                </ul>
+            </div>
+            <div class="card success">
+                <h4>⚙️ Build Configuration</h4>
+                <ul>
+                    <li><strong>Architecture:</strong> AArch64 (ARM 64-bit)</li>
+                    <li><strong>OS:</strong> Yocto Linux</li>
+                    <li><strong>Distribution:</strong> qcom-wayland</li>
+                    <li><strong>Toolchain:</strong> GCC 13.3 (aarch64-qcom-linux)</li>
+                    <li><strong>C Library:</strong> glibc</li>
+                </ul>
+            </div>
+        </div>
+
+        <hr>
+
+        <h2 id="prerequisites">2. Prerequisites</h2>
+
+        <h3>2.1 Host System Requirements</h3>
+
+        <table>
+            <tr><th>Component</th><th>Requirement</th></tr>
+            <tr><td>Operating System</td><td>Ubuntu 22.04 LTS (x86_64)</td></tr>
+            <tr><td>CPU</td><td>Quad-core or better (Intel i7 recommended)</td></tr>
+            <tr><td>RAM</td><td>16 GB minimum</td></tr>
+            <tr><td>Disk Space</td><td>50+ GB (SDK requires ~30 GB)</td></tr>
+            <tr><td>Git</td><td>Version 1.8.3.1 or later</td></tr>
+            <tr><td>Python</td><td>Version 3.10 or later</td></tr>
+            <tr><td>GNU Make</td><td>Version 4.0 or later</td></tr>
+        </table>
+
+        <h3>2.2 Required Packages</h3>
+
+        <pre><code># Install required packages on Ubuntu 22.04
+sudo apt update
+sudo apt install -y \
+    build-essential \
+    git \
+    wget \
+    curl \
+    tar \
+    xz-utils \
+    python3 \
+    python3-pip \
+    file \
+    locales
+
+# Set locale
+sudo locale-gen en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8</code></pre>
+
+        <hr>
+
+        <h2 id="sdk-setup">3. Qualcomm SDK Setup</h2>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph Install["📦 SDK Installation"]
+        A["Download eSDK<br/>from Thundercomm"] --> B["Run Installer<br/>.sh script"]
+        B --> C["Select Installation Path<br/>~/qcom-wayland_sdk"]
+        C --> D["SDK Ready"]
+    end
+    
+    subgraph Structure["📁 SDK Structure"]
+        D --> E["environment-setup-*"]
+        D --> F["tmp/sysroots/qcm6490-idp"]
+        D --> G["tmp/sysroots/x86_64"]
+    end
+        </div>
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h4>Download the Qualcomm eSDK</h4>
+                <p>Download the Yocto extensible SDK from the <a href="https://www.thundercomm.com/rubik-pi-3/en/docs/image" target="_blank">RUBIK Pi official website</a> or compile it yourself using:</p>
+                <pre><code># If building from source:
+export EXTRALAYERS="meta-qcom-qim-product-sdk"
+export MACHINE=qcm6490-idp
+export DISTRO=qcom-wayland
+source setup-environment_RUBIKPi
+bitbake -c do_populate_sdk_ext qcom-multimedia-image</code></pre>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h4>Install the eSDK</h4>
+                <p>Run the SDK installer script:</p>
+                <pre><code># Make executable and run
+chmod +x qcom-wayland-x86_64-qcom-multimedia-image-armv8-2a-qcm6490-idp-toolchain-ext-*.sh
+
+# Install to home directory
+./qcom-wayland-x86_64-qcom-multimedia-image-armv8-2a-qcm6490-idp-toolchain-ext-*.sh
+
+# When prompted, enter installation path:
+# → ~/qcom-wayland_sdk</code></pre>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h4>Verify SDK Installation</h4>
+                <pre><code># Check SDK directory structure
+ls -la ~/qcom-wayland_sdk/
+
+# Expected output:
+# environment-setup-armv8-2a-qcom-linux  ← Environment setup script
+# tmp/sysroots/qcm6490-idp/              ← Target sysroot
+# tmp/sysroots/x86_64/                   ← Host tools
+
+# Verify cross-compiler
+ls ~/qcom-wayland_sdk/tmp/sysroots/x86_64/usr/bin/aarch64-qcom-linux/
+
+# Expected: aarch64-qcom-linux-gcc, g++, ld, etc.</code></pre>
+            </div>
+        </div>
+
+        <div class="card warning">
+            <h4>⚠️ Important Note</h4>
+            <p>The SDK environment script (<code>environment-setup-armv8-2a-qcom-linux</code>) is used by the Alchemy toolchain-setup.mk to extract compiler paths and flags. <strong>Do not source this script manually</strong> when using Alchemy - the build system handles this automatically.</p>
+        </div>
+
+        <hr>
+
+        <h2 id="alchemy-config">4. Alchemy Configuration</h2>
+
+        <h3>4.1 Project Structure</h3>
+
+        <div class="file-tree"><span class="folder">alchemy/</span>
+├── <span class="folder">products/</span>
+│   └── <span class="folder">dragonwing-qcs6490/</span>         <span class="comment"># Product configuration</span>
+│       ├── <span class="highlight">setup.mk</span>                 <span class="comment"># Target OS/arch settings</span>
+│       └── <span class="highlight">toolchain-setup.mk</span>       <span class="comment"># Toolchain configuration</span>
+│
+├── <span class="folder">packages/</span>
+│   └── <span class="folder">helloworld/</span>                  <span class="comment"># Example package</span>
+│       ├── <span class="highlight">atom.mk</span>                  <span class="comment"># Module definition</span>
+│       └── <span class="folder">src/</span>
+│           └── <span class="file">helloworld.c</span>         <span class="comment"># Source code</span>
+│
+└── <span class="folder">out/</span>
+    └── <span class="folder">dragonwing-qcs6490-aarch64/</span>  <span class="comment"># Build output</span>
+        ├── <span class="folder">build/</span>                   <span class="comment"># Compiled objects</span>
+        ├── <span class="folder">staging/</span>                 <span class="comment"># Installed files</span>
+        └── <span class="folder">final/</span>                   <span class="comment"># Final image</span></div>
+
+        <h3>4.2 Product Configuration Files</h3>
+
+        <h4>📄 products/dragonwing-qcs6490/setup.mk</h4>
+        <pre><code>###############################################################################
+## Product setup for Dragonwing QCS6490 board
+###############################################################################
+
+# Product identification
+TARGET_PRODUCT := dragonwing-qcs6490
+TARGET_PRODUCT_VARIANT := aarch64
+
+# Target OS configuration
+TARGET_OS := linux
+TARGET_OS_FLAVOUR := yocto
+
+# Target architecture (ARM 64-bit)
+TARGET_ARCH := aarch64
+TARGET_CPU := cortex-a78
+
+# C library (glibc from Yocto SDK)
+TARGET_LIBC := glibc
+
+# Board-specific defines
+TARGET_GLOBAL_CFLAGS += \
+    -DTARGET_BOARD_QCS6490=1 \
+    -DTARGET_BOARD_DRAGONWING=1
+
+# Image format for deployment
+TARGET_IMAGE_FORMAT := tar.gz</code></pre>
+
+        <h4>📄 products/dragonwing-qcs6490/toolchain-setup.mk</h4>
+        <pre><code>###############################################################################
+## Toolchain setup for Qualcomm Yocto eSDK
+###############################################################################
+
+# SDK path (can be overridden via QCOM_SDK_PATH environment variable)
+QCOM_SDK_PATH ?= $(HOME)/qcom-wayland_sdk
+
+# Verify SDK exists
+ifeq ("$(wildcard $(QCOM_SDK_PATH))","")
+  $(error Qualcomm SDK not found at $(QCOM_SDK_PATH))
+endif
+
+# SDK sysroots
+QCOM_SDK_TARGET_SYSROOT := $(QCOM_SDK_PATH)/tmp/sysroots/qcm6490-idp
+QCOM_SDK_HOST_SYSROOT   := $(QCOM_SDK_PATH)/tmp/sysroots/x86_64
+
+# Cross-compiler prefix
+QCOM_TOOLCHAIN_PATH := $(QCOM_SDK_HOST_SYSROOT)/usr/bin/aarch64-qcom-linux
+TARGET_CROSS := $(QCOM_TOOLCHAIN_PATH)/aarch64-qcom-linux-
+
+# Compiler tools
+TARGET_CC      := $(TARGET_CROSS)gcc
+TARGET_CXX     := $(TARGET_CROSS)g++
+TARGET_AS      := $(TARGET_CROSS)as
+TARGET_LD      := $(TARGET_CROSS)ld
+TARGET_AR      := $(TARGET_CROSS)ar
+TARGET_STRIP   := $(TARGET_CROSS)strip
+TARGET_OBJCOPY := $(TARGET_CROSS)objcopy
+
+# Architecture flags
+QCOM_ARCH_FLAGS := -march=armv8.2-a+crypto -mbranch-protection=standard
+
+# Security hardening flags
+QCOM_SECURITY_FLAGS := -fstack-protector-strong -D_FORTIFY_SOURCE=2
+
+# Sysroot flag
+QCOM_SYSROOT_FLAG := --sysroot=$(QCOM_SDK_TARGET_SYSROOT)
+
+# Global flags
+TARGET_GLOBAL_CFLAGS += $(QCOM_ARCH_FLAGS) $(QCOM_SECURITY_FLAGS) $(QCOM_SYSROOT_FLAG)
+TARGET_GLOBAL_LDFLAGS += -Wl,-O1 -Wl,--as-needed $(QCOM_SYSROOT_FLAG)
+
+# Include paths
+TARGET_GLOBAL_C_INCLUDES += $(QCOM_SDK_TARGET_SYSROOT)/usr/include</code></pre>
+
+        <hr>
+
+        <h2 id="helloworld">5. Hello World Example</h2>
+
+        <h3>5.1 Module Definition (atom.mk)</h3>
+
+        <pre><code>###############################################################################
+## packages/helloworld/atom.mk
+###############################################################################
+
+# Get the directory where this atom.mk file is located
+LOCAL_PATH := $(call my-dir)
+
+# Clear all LOCAL_* variables
+include $(CLEAR_VARS)
+
+# Module name (will be the executable name)
+LOCAL_MODULE := helloworld
+
+# Description
+LOCAL_DESCRIPTION := Hello World example for QCS6490 board
+
+# Source files
+LOCAL_SRC_FILES := src/helloworld.c
+
+# Compilation flags
+LOCAL_CFLAGS := -Wall -Wextra -Wpedantic
+
+# Build as executable
+include $(BUILD_EXECUTABLE)</code></pre>
+
+        <h3>5.2 Source Code (helloworld.c)</h3>
+
+        <pre><code>/**
+ * @file helloworld.c
+ * @brief Hello World for Dragonwing QCS6490
+ */
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/utsname.h&gt;
+
+int main(int argc, char *argv[])
+{
+    struct utsname sys_info;
+
+    printf("============================================\n");
+    printf("    Hello World from Dragonwing QCS6490!\n");
+    printf("============================================\n\n");
+
+    if (uname(&sys_info) == 0) {
+        printf("System Information:\n");
+        printf("  OS:       %s\n", sys_info.sysname);
+        printf("  Machine:  %s\n", sys_info.machine);
+        printf("  Release:  %s\n", sys_info.release);
+    }
+
+    printf("\nBuild Information:\n");
+    printf("  Compiled: %s %s\n", __DATE__, __TIME__);
+#ifdef TARGET_BOARD_QCS6490
+    printf("  Target:   Qualcomm QCS6490\n");
+#endif
+#if defined(__aarch64__)
+    printf("  Arch:     AArch64 (64-bit ARM)\n");
+#endif
+
+    return EXIT_SUCCESS;
+}</code></pre>
+
+        <hr>
+
+        <h2 id="building">6. Building & Deploying</h2>
+
+        <div class="mermaid">
+flowchart LR
+    subgraph Build["🔨 Build Process"]
+        A["Configure<br/>Product"] --> B["Compile<br/>Modules"]
+        B --> C["Link<br/>Executable"]
+        C --> D["Install to<br/>Staging"]
+    end
+    
+    subgraph Deploy["🚀 Deployment"]
+        D --> E["Create<br/>Image"]
+        E --> F["Transfer to<br/>Target"]
+        F --> G["Run on<br/>QCS6490"]
+    end
+        </div>
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h4>Configure Build Environment</h4>
+                <pre><code># Navigate to workspace
+cd /path/to/your/alchemy-workspace
+
+# Set product configuration
+export ALCHEMY_TARGET_CONFIG_DIR=alchemy/products/dragonwing-qcs6490
+
+# Optional: Override SDK path if not in ~/qcom-wayland_sdk
+export QCOM_SDK_PATH=/custom/path/to/qcom-wayland_sdk</code></pre>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h4>Build the Hello World Module</h4>
+                <pre><code># Build using alchemake
+./alchemy/scripts/alchemake helloworld
+
+# Or build with verbose output
+./alchemy/scripts/alchemake V=1 helloworld
+
+# Check SDK configuration
+./alchemy/scripts/alchemake qcom-sdk-info</code></pre>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h4>Verify the Build Output</h4>
+                <pre><code># Check the compiled binary
+file out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld
+
+# Expected output:
+# helloworld: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV),
+# dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, ...</code></pre>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                <h4>Deploy to Target Board</h4>
+                <pre><code># Copy to target via SSH (assuming target IP is 192.168.1.100)
+scp out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld \
+    root@192.168.1.100:/usr/bin/
+
+# Or using ADB (if connected via USB)
+adb push out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld /usr/bin/</code></pre>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-content">
+                <h4>Run on Target</h4>
+                <div class="terminal">
+<span class="prompt">root@qcm6490-idp:~#</span> helloworld
+<span class="output">============================================
+    Hello World from Dragonwing QCS6490!
+============================================
+
+System Information:
+  OS:       Linux
+  Machine:  aarch64
+  Release:  6.6.52-qcom
+
+Build Information:
+  Compiled: Dec 24 2025 10:30:00
+  Target:   Qualcomm QCS6490
+  Arch:     AArch64 (64-bit ARM)
+
+============================================
+    Alchemy Build System Demo Complete!
+============================================</span>
+                </div>
+            </div>
+        </div>
+
+        <hr>
+
+        <h2 id="troubleshooting">7. Troubleshooting</h2>
+
+        <div class="grid">
+            <div class="card danger">
+                <h4>❌ SDK Not Found</h4>
+                <p><strong>Error:</strong> <code>Qualcomm SDK not found at $(QCOM_SDK_PATH)</code></p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Verify SDK is installed at <code>~/qcom-wayland_sdk/</code></li>
+                    <li>Or set <code>export QCOM_SDK_PATH=/your/sdk/path</code></li>
+                </ul>
+            </div>
+
+            <div class="card danger">
+                <h4>❌ Cross-compiler Not Found</h4>
+                <p><strong>Error:</strong> <code>aarch64-qcom-linux-gcc: command not found</code></p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Check toolchain path exists: <code>ls ~/qcom-wayland_sdk/tmp/sysroots/x86_64/usr/bin/aarch64-qcom-linux/</code></li>
+                    <li>Ensure SDK was fully extracted</li>
+                </ul>
+            </div>
+
+            <div class="card danger">
+                <h4>❌ Missing Headers</h4>
+                <p><strong>Error:</strong> <code>fatal error: stdio.h: No such file</code></p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Verify sysroot exists: <code>ls ~/qcom-wayland_sdk/tmp/sysroots/qcm6490-idp/usr/include/</code></li>
+                    <li>Check <code>--sysroot</code> flag in CFLAGS</li>
+                </ul>
+            </div>
+
+            <div class="card danger">
+                <h4>❌ Wrong Architecture</h4>
+                <p><strong>Error:</strong> Binary doesn't run on target</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Verify with <code>file helloworld</code></li>
+                    <li>Should show: <code>ELF 64-bit LSB ... ARM aarch64</code></li>
+                    <li>Check TARGET_ARCH is set to <code>aarch64</code></li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Debug Commands</h3>
+
+        <table>
+            <tr><th>Command</th><th>Purpose</th></tr>
+            <tr><td><code>./alchemy/scripts/alchemake qcom-sdk-info</code></td><td>Display SDK configuration</td></tr>
+            <tr><td><code>./alchemy/scripts/alchemake V=1 helloworld</code></td><td>Verbose build output</td></tr>
+            <tr><td><code>./alchemy/scripts/alchemake dump-config | grep TARGET_</code></td><td>Show all TARGET variables</td></tr>
+            <tr><td><code>./alchemy/scripts/alchemake helloworld-depends</code></td><td>Show module dependencies</td></tr>
+            <tr><td><code>./alchemy/scripts/alchemake helloworld-clean</code></td><td>Clean module build</td></tr>
+            <tr><td><code>file out/.../helloworld</code></td><td>Verify binary architecture</td></tr>
+        </table>
+
+        <hr>
+
+        <h2 id="references">8. References</h2>
+
+        <div class="grid">
+            <div class="card">
+                <h4>📚 Documentation</h4>
+                <ul>
+                    <li><a href="https://www.thundercomm.com/rubik-pi-3/en/docs/rubik-pi-3-user-manual/1.1.2/yocto-project-user-guide/" target="_blank">RUBIK Pi 3 Yocto User Guide</a></li>
+                    <li><a href="https://docs.qualcomm.com/bundle/publicresource/topics/80-70017-51" target="_blank">Qualcomm QIMP SDK Guide</a></li>
+                    <li><a href="https://www.thundercomm.com/rubik-pi-3/en/docs/image" target="_blank">RUBIK Pi Images Download</a></li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>🔗 Resources</h4>
+                <ul>
+                    <li><a href="https://www.rubikpi.ai/" target="_blank">RUBIK Pi Official Site</a></li>
+                    <li><a href="https://github.com/rubikpi-ai" target="_blank">RUBIK Pi GitHub</a></li>
+                    <li><a href="https://www.qualcomm.com/products/internet-of-things/industrial/building-enterprise/qcs6490" target="_blank">Qualcomm QCS6490 Product Page</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <hr>
+
+        <h2>Quick Reference</h2>
+
+        <div class="card success">
+            <h4>🚀 Quick Start Commands</h4>
+            <pre><code># 1. Set configuration
+export ALCHEMY_TARGET_CONFIG_DIR=alchemy/products/dragonwing-qcs6490
+
+# 2. Build module
+./alchemy/scripts/alchemake helloworld
+
+# 3. Verify output
+file out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld
+
+# 4. Deploy to target
+scp out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld root@TARGET_IP:/usr/bin/
+
+# 5. Run on target
+ssh root@TARGET_IP helloworld</code></pre>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>Generated on December 24, 2025 | Alchemy Build System</p>
+        <p>Dragonwing QCS6490 SDK Configuration Guide</p>
+    </footer>
+</body>
+</html>
