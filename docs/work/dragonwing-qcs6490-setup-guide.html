@@ -316,8 +316,9 @@
                 <li><a href="#alchemy-config">4. Alchemy Configuration</a></li>
                 <li><a href="#helloworld">5. Hello World Example</a></li>
                 <li><a href="#building">6. Building & Deploying</a></li>
-                <li><a href="#troubleshooting">7. Troubleshooting</a></li>
-                <li><a href="#references">8. References</a></li>
+                <li><a href="#multi-packages">7. Building Multiple Packages</a></li>
+                <li><a href="#troubleshooting">8. Troubleshooting</a></li>
+                <li><a href="#references">9. References</a></li>
             </ul>
         </div>
 
@@ -660,76 +661,127 @@ int main(int argc, char *argv[])
         <div class="mermaid">
 flowchart LR
     subgraph Build["🔨 Build Process"]
-        A["Configure<br/>Product"] --> B["Compile<br/>Modules"]
-        B --> C["Link<br/>Executable"]
-        C --> D["Install to<br/>Staging"]
+        A["Create<br/>Workspace"] --> B["Set Environment<br/>Variables"]
+        B --> C["Run Make<br/>Command"]
+        C --> D["Binary in<br/>Staging"]
     end
     
     subgraph Deploy["🚀 Deployment"]
-        D --> E["Create<br/>Image"]
-        E --> F["Transfer to<br/>Target"]
-        F --> G["Run on<br/>QCS6490"]
+        D --> E["Copy via<br/>SCP/ADB"]
+        E --> F["Run on<br/>QCS6490"]
     end
+        </div>
+
+        <div class="card warning">
+            <h4>⚠️ Important: Workspace Structure</h4>
+            <p>Alchemy requires a <strong>separate workspace directory</strong> containing your packages. The Alchemy build system itself should be in a separate location. The build is run FROM the workspace directory.</p>
         </div>
 
         <div class="step">
             <div class="step-number">1</div>
             <div class="step-content">
-                <h4>Configure Build Environment</h4>
-                <pre><code># Navigate to workspace
-cd /path/to/your/alchemy-workspace
+                <h4>Create Workspace Directory</h4>
+                <p>Create a workspace directory and copy the helloworld package into it:</p>
+                <pre><code># Create workspace structure
+mkdir -p ~/workspace-qcs6490/packages
 
-# Set product configuration
-export ALCHEMY_TARGET_CONFIG_DIR=alchemy/products/dragonwing-qcs6490
+# Copy the helloworld package to your workspace
+cp -r /path/to/alchemy/packages/helloworld ~/workspace-qcs6490/packages/
 
-# Optional: Override SDK path if not in ~/qcom-wayland_sdk
-export QCOM_SDK_PATH=/custom/path/to/qcom-wayland_sdk</code></pre>
+# Verify structure
+tree ~/workspace-qcs6490/
+# workspace-qcs6490/
+# └── packages/
+#     └── helloworld/
+#         ├── atom.mk
+#         └── src/
+#             └── helloworld.c</code></pre>
             </div>
         </div>
 
         <div class="step">
             <div class="step-number">2</div>
             <div class="step-content">
-                <h4>Build the Hello World Module</h4>
-                <pre><code># Build using alchemake
-./alchemy/scripts/alchemake helloworld
+                <h4>Set Environment Variables</h4>
+                <p>Configure the required environment variables:</p>
+                <pre><code># Navigate to YOUR WORKSPACE (not alchemy directory!)
+cd ~/workspace-qcs6490
 
-# Or build with verbose output
-./alchemy/scripts/alchemake V=1 helloworld
+# Set ALCHEMY_HOME to point to the Alchemy build system
+export ALCHEMY_HOME=/path/to/alchemy
 
-# Check SDK configuration
-./alchemy/scripts/alchemake qcom-sdk-info</code></pre>
+# Set TARGET_CONFIG_DIR to point to the product configuration
+export ALCHEMY_TARGET_CONFIG_DIR=$ALCHEMY_HOME/products/dragonwing-qcs6490
+
+# Optional: Override SDK path if not in ~/qcom-wayland_sdk
+# export QCOM_SDK_PATH=/custom/path/to/qcom-wayland_sdk</code></pre>
             </div>
         </div>
 
         <div class="step">
             <div class="step-number">3</div>
             <div class="step-content">
-                <h4>Verify the Build Output</h4>
-                <pre><code># Check the compiled binary
-file out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld
+                <h4>Build the Hello World Module</h4>
+                <p>Run make with the Alchemy main.mk file:</p>
+                <pre><code># Make sure you are in the workspace directory
+cd ~/workspace-qcs6490
 
-# Expected output:
-# helloworld: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV),
-# dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, ...</code></pre>
+# Build helloworld (verbose mode)
+make -f $ALCHEMY_HOME/main.mk V=1 helloworld
+
+# Or build all modules
+make -f $ALCHEMY_HOME/main.mk V=1 all</code></pre>
+                <p>You should see output like:</p>
+                <pre><code>----------------------------------------------------------------------
++ TARGET_PRODUCT = dragonwing-qcs6490
++ TARGET_PRODUCT_VARIANT = aarch64
++ TARGET_OS = linux
++ TARGET_ARCH = aarch64
++ TARGET_CPU = cortex-a78
+----------------------------------------------------------------------
+Scanning for makefiles...
+Found 3 makefiles
+aarch64 C: helloworld <= packages/helloworld/src/helloworld.c
+Executable: helloworld => Alchemy-out/.../helloworld
+Copy: helloworld => staging/usr/bin/helloworld</code></pre>
             </div>
         </div>
 
         <div class="step">
             <div class="step-number">4</div>
             <div class="step-content">
-                <h4>Deploy to Target Board</h4>
-                <pre><code># Copy to target via SSH (assuming target IP is 192.168.1.100)
-scp out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld \
-    root@192.168.1.100:/usr/bin/
+                <h4>Verify the Build Output</h4>
+                <pre><code># Check the compiled binary
+file ~/workspace-qcs6490/Alchemy-out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld
 
-# Or using ADB (if connected via USB)
-adb push out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld /usr/bin/</code></pre>
+# Expected output:
+# helloworld: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV),
+# dynamically linked, interpreter /usr/lib/ld-linux-aarch64.so.1,
+# for GNU/Linux 5.15.0, with debug_info, not stripped
+
+# Check binary details
+readelf -h ~/workspace-qcs6490/Alchemy-out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld | grep -E "Class|Machine"
+# Class:                             ELF64
+# Machine:                           AArch64</code></pre>
             </div>
         </div>
 
         <div class="step">
             <div class="step-number">5</div>
+            <div class="step-content">
+                <h4>Deploy to Target Board</h4>
+                <pre><code># Copy to target via SSH (replace TARGET_IP with your board's IP)
+scp ~/workspace-qcs6490/Alchemy-out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld \
+    root@TARGET_IP:/usr/bin/
+
+# Or using ADB (if connected via USB)
+adb push ~/workspace-qcs6490/Alchemy-out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld \
+    /usr/bin/</code></pre>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">6</div>
             <div class="step-content">
                 <h4>Run on Target</h4>
                 <div class="terminal">
@@ -755,11 +807,352 @@ Build Information:
             </div>
         </div>
 
+        <h3>Complete Build Script</h3>
+        <p>For convenience, you can create a build script:</p>
+        <pre><code>#!/bin/bash
+# build-qcs6490.sh - Build script for Dragonwing QCS6490
+
+# Configuration
+ALCHEMY_HOME="/path/to/alchemy"
+WORKSPACE="$HOME/workspace-qcs6490"
+PRODUCT_CONFIG="$ALCHEMY_HOME/products/dragonwing-qcs6490"
+
+# Optional: Custom SDK path
+# export QCOM_SDK_PATH="/custom/path/to/qcom-wayland_sdk"
+
+# Set environment
+export ALCHEMY_HOME
+export ALCHEMY_TARGET_CONFIG_DIR="$PRODUCT_CONFIG"
+
+# Build
+cd "$WORKSPACE"
+make -f "$ALCHEMY_HOME/main.mk" V=1 "$@"
+
+# Show output location
+echo ""
+echo "Build output: $WORKSPACE/Alchemy-out/dragonwing-qcs6490-aarch64/staging/usr/bin/"</code></pre>
+
+        <h3>Using the <code>alchemake</code> Script</h3>
+        <p>Alchemy provides a convenient <code>alchemake</code> wrapper script that simplifies the build command. This script handles error detection, parallel job management, and provides a cleaner output.</p>
+        
+        <div class="card">
+            <h4>🛠️ Method 1: Using ALCHEMY_WORKSPACE_DIR (Recommended)</h4>
+            <p>With <code>ALCHEMY_WORKSPACE_DIR</code> set, you can run <code>alchemake</code> from anywhere:</p>
+            <pre><code># Set all three required environment variables
+export ALCHEMY_HOME=/var/PARROT-ALCHEMY/ALCHEMY/alchemy
+export ALCHEMY_WORKSPACE_DIR=$HOME/workspace-qcs6490
+export ALCHEMY_TARGET_CONFIG_DIR=$ALCHEMY_HOME/products/dragonwing-qcs6490
+
+# Now you can build from anywhere!
+$ALCHEMY_HOME/scripts/alchemake helloworld
+
+# Or build all modules
+$ALCHEMY_HOME/scripts/alchemake all</code></pre>
+        </div>
+
+        <div class="card">
+            <h4>🛠️ Method 2: From Workspace Directory</h4>
+            <p>Without <code>ALCHEMY_WORKSPACE_DIR</code>, you must be in the workspace directory and use <code>-f</code>:</p>
+            <pre><code># Navigate to workspace
+cd ~/workspace-qcs6490
+
+# Set environment variables
+export ALCHEMY_HOME=/var/PARROT-ALCHEMY/ALCHEMY/alchemy
+export ALCHEMY_TARGET_CONFIG_DIR=$ALCHEMY_HOME/products/dragonwing-qcs6490
+
+# Build with -f flag
+$ALCHEMY_HOME/scripts/alchemake -f $ALCHEMY_HOME/main.mk helloworld</code></pre>
+        </div>
+
+        <div class="card highlight">
+            <h4>💡 Permanent Environment Setup</h4>
+            <p>Create an environment script to easily load settings:</p>
+            <pre><code># Create environment setup script
+cat > ~/qcs6490-env.sh &lt;&lt; 'EOF'
+#!/bin/bash
+export ALCHEMY_HOME=/var/PARROT-ALCHEMY/ALCHEMY/alchemy
+export ALCHEMY_WORKSPACE_DIR=$HOME/workspace-qcs6490
+export ALCHEMY_TARGET_CONFIG_DIR=$ALCHEMY_HOME/products/dragonwing-qcs6490
+export PATH=$ALCHEMY_HOME/scripts:$PATH
+echo "QCS6490 Alchemy environment loaded!"
+echo "  ALCHEMY_HOME=$ALCHEMY_HOME"
+echo "  ALCHEMY_WORKSPACE_DIR=$ALCHEMY_WORKSPACE_DIR"
+EOF
+
+chmod +x ~/qcs6490-env.sh
+
+# Load before building
+source ~/qcs6490-env.sh
+
+# Now simply use:
+alchemake helloworld</code></pre>
+        </div>
+
+        <div class="card warning">
+            <h4>⚠️ Environment Variables Summary</h4>
+            <table style="width:100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <th style="text-align:left; padding: 8px;">Variable</th>
+                        <th style="text-align:left; padding: 8px;">Required</th>
+                        <th style="text-align:left; padding: 8px;">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px;"><code>ALCHEMY_HOME</code></td>
+                        <td style="padding: 8px;">✅ Yes</td>
+                        <td style="padding: 8px;">Path to Alchemy build system</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px;"><code>ALCHEMY_WORKSPACE_DIR</code></td>
+                        <td style="padding: 8px;">🔶 For alchemake</td>
+                        <td style="padding: 8px;">Path to your workspace with packages</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px;"><code>ALCHEMY_TARGET_CONFIG_DIR</code></td>
+                        <td style="padding: 8px;">✅ Yes</td>
+                        <td style="padding: 8px;">Path to product configuration (product.mk)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <hr>
 
-        <h2 id="troubleshooting">7. Troubleshooting</h2>
+        <h2 id="multi-packages">7. Building Multiple Packages</h2>
+
+        <p>Alchemy provides several mechanisms to build multiple packages together. Understanding these methods helps you organize your project efficiently.</p>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph Methods["🔧 Build Methods"]
+        direction TB
+        M1["📋 Command Line<br/>List multiple modules"] --> R1["alchemake mod1 mod2 mod3"]
+        M2["🔗 Dependencies<br/>LOCAL_LIBRARIES"] --> R2["Auto-build dependencies"]
+        M3["📦 META_PACKAGE<br/>Group modules"] --> R3["alchemake my-group"]
+        M4["🌐 Build All<br/>all target"] --> R4["alchemake all"]
+    end
+        </div>
+
+        <h3>Method 1: Command Line - Multiple Modules</h3>
+        <div class="card">
+            <h4>🎯 Direct Module List</h4>
+            <p>Specify multiple module names on the command line. Each module and its dependencies will be built:</p>
+            <pre><code># Build multiple modules at once
+$ALCHEMY_HOME/scripts/alchemake helloworld libgreeting greeter
+
+# Or with make directly
+make -f $ALCHEMY_HOME/main.mk helloworld libgreeting greeter</code></pre>
+            <p><strong>Use case:</strong> Quick builds of specific modules during development.</p>
+        </div>
+
+        <h3>Method 2: Automatic Dependencies with LOCAL_LIBRARIES</h3>
+        <div class="card highlight">
+            <h4>🔗 Dependency Chain</h4>
+            <p>When a module declares dependencies via <code>LOCAL_LIBRARIES</code>, those dependencies are automatically built first:</p>
+            <pre><code># In greeter/atom.mk
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := greeter
+LOCAL_DESCRIPTION := Greeter application
+
+LOCAL_SRC_FILES := src/main.c
+
+# This dependency is built automatically!
+LOCAL_LIBRARIES := libgreeting
+
+include $(BUILD_EXECUTABLE)</code></pre>
+            <p>When you build <code>greeter</code>, Alchemy automatically:</p>
+            <ol>
+                <li>Detects <code>libgreeting</code> as a dependency</li>
+                <li>Builds <code>libgreeting</code> first (compiles, links .so)</li>
+                <li>Copies headers to staging for greeter to use</li>
+                <li>Then builds <code>greeter</code> linked against <code>libgreeting.so</code></li>
+            </ol>
+        </div>
+
+        <h3>Method 3: META_PACKAGE - Group Multiple Modules</h3>
+        <div class="card success">
+            <h4>📦 Module Grouping</h4>
+            <p>A <code>META_PACKAGE</code> is a virtual module that groups multiple modules together. It doesn't produce any binary but serves as a convenient way to build a collection of modules:</p>
+            <pre><code># In dragonwing-examples/atom.mk
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := dragonwing-examples
+LOCAL_DESCRIPTION := All Dragonwing QCS6490 example packages
+LOCAL_CATEGORY_PATH := examples
+
+# List all modules to build with this meta-package
+LOCAL_DEPENDS_MODULES := \
+    helloworld \
+    libgreeting \
+    greeter
+
+include $(BUILD_META_PACKAGE)</code></pre>
+            <p>Now build everything with a single command:</p>
+            <pre><code># Build all grouped modules
+$ALCHEMY_HOME/scripts/alchemake dragonwing-examples
+
+# This builds: helloworld, libgreeting, greeter</code></pre>
+        </div>
+
+        <h3>Method 4: Build All Configured Modules</h3>
+        <div class="card">
+            <h4>🌐 The 'all' Target</h4>
+            <p>Build every module that is enabled in the configuration:</p>
+            <pre><code># Build ALL modules
+$ALCHEMY_HOME/scripts/alchemake all</code></pre>
+            <p><strong>Note:</strong> This builds all modules found in the workspace that pass configuration checks.</p>
+        </div>
+
+        <h3>Example: Complete Multi-Package Project Structure</h3>
+        <div class="card">
+            <h4>📁 Workspace Structure</h4>
+            <pre class="file-tree">workspace-qcs6490/
+└── packages/
+    ├── helloworld/              # Standalone executable
+    │   ├── atom.mk
+    │   └── src/
+    │       └── helloworld.c
+    │
+    ├── libgreeting/             # Shared library
+    │   ├── atom.mk
+    │   ├── include/
+    │   │   └── greeting.h       # Public header
+    │   └── src/
+    │       └── greeting.c
+    │
+    ├── greeter/                 # App using libgreeting
+    │   ├── atom.mk              # Has: LOCAL_LIBRARIES := libgreeting
+    │   └── src/
+    │       └── main.c
+    │
+    └── dragonwing-examples/     # META_PACKAGE
+        └── atom.mk              # Groups all above modules</pre>
+        </div>
+
+        <h3>Library Module Example: libgreeting</h3>
+        <div class="card">
+            <h4>📚 Shared Library atom.mk</h4>
+            <pre><code># libgreeting/atom.mk
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libgreeting
+LOCAL_DESCRIPTION := Greeting shared library
+LOCAL_CATEGORY_PATH := examples/libs
+
+LOCAL_SRC_FILES := src/greeting.c
+
+# Export includes so other modules can use this library
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
+
+include $(BUILD_SHARED_LIBRARY)</code></pre>
+            <p><strong>Key points:</strong></p>
+            <ul>
+                <li><code>BUILD_SHARED_LIBRARY</code> creates a <code>.so</code> file</li>
+                <li><code>LOCAL_EXPORT_C_INCLUDES</code> makes headers available to dependent modules</li>
+                <li>The library is automatically copied to <code>staging/usr/lib/</code></li>
+            </ul>
+        </div>
+
+        <h3>Build Commands Summary</h3>
+        <div class="card warning">
+            <h4>⚡ Quick Reference</h4>
+            <table style="width:100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border);">
+                        <th style="text-align:left; padding: 10px;">Command</th>
+                        <th style="text-align:left; padding: 10px;">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px;"><code>alchemake module1</code></td>
+                        <td style="padding: 10px;">Build single module + dependencies</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px;"><code>alchemake mod1 mod2 mod3</code></td>
+                        <td style="padding: 10px;">Build multiple specific modules</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px;"><code>alchemake meta-package</code></td>
+                        <td style="padding: 10px;">Build all modules in a group</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px;"><code>alchemake all</code></td>
+                        <td style="padding: 10px;">Build all configured modules</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 10px;"><code>alchemake module-clean</code></td>
+                        <td style="padding: 10px;">Clean a module (keep external sources)</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px;"><code>alchemake module-dirclean</code></td>
+                        <td style="padding: 10px;">Remove entire module build directory</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <hr>
+
+        <h2 id="troubleshooting">8. Troubleshooting</h2>
 
         <div class="grid">
+            <div class="card danger">
+                <h4>❌ No rule to make target 'helloworld'</h4>
+                <p><strong>Error:</strong> <code>make: *** No rule to make target 'helloworld'. Stop.</code></p>
+                <p><strong>Cause:</strong> Running make from wrong directory or packages not found</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Run make from <strong>workspace directory</strong>, not alchemy directory</li>
+                    <li>Verify packages exist: <code>ls workspace/packages/helloworld/atom.mk</code></li>
+                    <li>Check <code>ALCHEMY_HOME</code> points to alchemy directory</li>
+                </ul>
+            </div>
+
+            <div class="card danger">
+                <h4>❌ Unrecognized option '-m64' or '-msse'</h4>
+                <p><strong>Error:</strong> <code>aarch64-qcom-linux-gcc: error: unrecognized command-line option '-m64'</code></p>
+                <p><strong>Cause:</strong> x86 flags being passed to ARM cross-compiler</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Ensure <code>product.mk</code> exists (not just <code>setup.mk</code>)</li>
+                    <li>Set <code>TARGET_OS_FLAVOUR :=</code> (empty) to avoid loading default yocto setup</li>
+                    <li>Add <code>TARGET_TOOLCHAIN_TRIPLET := aarch64-qcom-linux</code> in toolchain-setup.mk</li>
+                </ul>
+            </div>
+
+            <div class="card danger">
+                <h4>❌ No Yocto SDK found</h4>
+                <p><strong>Error:</strong> <code>No Yocto SDK found, you need to set TARGET_YOCTO_SDK</code></p>
+                <p><strong>Cause:</strong> <code>TARGET_OS_FLAVOUR := yocto</code> loads default yocto setup</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Change <code>TARGET_OS_FLAVOUR := yocto</code> to <code>TARGET_OS_FLAVOUR :=</code> (empty)</li>
+                    <li>The Qualcomm eSDK is handled manually in toolchain-setup.mk</li>
+                </ul>
+            </div>
+
+            <div class="card danger">
+                <h4>❌ TARGET_PRODUCT shows 'linux-native'</h4>
+                <p><strong>Error:</strong> Build output shows <code>TARGET_PRODUCT = linux-native</code> instead of <code>dragonwing-qcs6490</code></p>
+                <p><strong>Cause:</strong> Product configuration not loaded</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Alchemy expects <code>product.mk</code> or <code>target-setup.mk</code></li>
+                    <li>Create/copy: <code>cp setup.mk product.mk</code></li>
+                    <li>Verify path: <code>ALCHEMY_TARGET_CONFIG_DIR</code> must be absolute path</li>
+                </ul>
+            </div>
+
             <div class="card danger">
                 <h4>❌ SDK Not Found</h4>
                 <p><strong>Error:</strong> <code>Qualcomm SDK not found at $(QCOM_SDK_PATH)</code></p>
@@ -802,6 +1195,39 @@ Build Information:
             </div>
         </div>
 
+        <h3>Key Configuration Requirements</h3>
+        
+        <div class="card success">
+            <h4>✅ Required Files in products/dragonwing-qcs6490/</h4>
+            <table>
+                <tr><th>File</th><th>Purpose</th><th>Required</th></tr>
+                <tr><td><code>product.mk</code></td><td>Product/target configuration (TARGET_OS, TARGET_ARCH, etc.)</td><td><strong>Yes</strong></td></tr>
+                <tr><td><code>toolchain-setup.mk</code></td><td>Cross-compiler paths and flags</td><td><strong>Yes</strong></td></tr>
+                <tr><td><code>setup.mk</code></td><td>Legacy name (use product.mk instead)</td><td>No</td></tr>
+            </table>
+        </div>
+
+        <div class="card success">
+            <h4>✅ Critical Variables in product.mk</h4>
+            <pre><code># These MUST be set correctly:
+TARGET_PRODUCT := dragonwing-qcs6490
+TARGET_OS := linux
+TARGET_OS_FLAVOUR :=        # EMPTY - don't use 'yocto'!
+TARGET_ARCH := aarch64
+TARGET_LIBC := glibc</code></pre>
+        </div>
+
+        <div class="card success">
+            <h4>✅ Critical Variables in toolchain-setup.mk</h4>
+            <pre><code># Define triplet to avoid auto-detection issues
+TARGET_TOOLCHAIN_TRIPLET := aarch64-qcom-linux
+
+# Full paths to compiler tools
+TARGET_CROSS := $(QCOM_TOOLCHAIN_PATH)/aarch64-qcom-linux-
+TARGET_CC := $(TARGET_CROSS)gcc
+# ... etc</code></pre>
+        </div>
+
         <h3>Debug Commands</h3>
 
         <table>
@@ -816,7 +1242,7 @@ Build Information:
 
         <hr>
 
-        <h2 id="references">8. References</h2>
+        <h2 id="references">9. References</h2>
 
         <div class="grid">
             <div class="card">
@@ -842,21 +1268,43 @@ Build Information:
         <h2>Quick Reference</h2>
 
         <div class="card success">
-            <h4>🚀 Quick Start Commands</h4>
-            <pre><code># 1. Set configuration
-export ALCHEMY_TARGET_CONFIG_DIR=alchemy/products/dragonwing-qcs6490
+            <h4>🚀 Quick Start Commands (Copy & Paste)</h4>
+            <pre><code># 1. Create workspace and copy helloworld package
+mkdir -p ~/workspace-qcs6490/packages
+cp -r /path/to/alchemy/packages/helloworld ~/workspace-qcs6490/packages/
 
-# 2. Build module
-./alchemy/scripts/alchemake helloworld
+# 2. Set environment variables (adjust ALCHEMY_HOME path)
+export ALCHEMY_HOME=/path/to/alchemy
+export ALCHEMY_WORKSPACE_DIR=~/workspace-qcs6490
+export ALCHEMY_TARGET_CONFIG_DIR=$ALCHEMY_HOME/products/dragonwing-qcs6490
 
-# 3. Verify output
-file out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld
+# 3. Build helloworld using alchemake (recommended)
+$ALCHEMY_HOME/scripts/alchemake helloworld
 
-# 4. Deploy to target
-scp out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld root@TARGET_IP:/usr/bin/
+# Alternative: Build using make directly (from workspace directory)
+cd ~/workspace-qcs6490
+make -f $ALCHEMY_HOME/main.mk V=1 helloworld
 
-# 5. Run on target
+# 4. Verify output (should show ARM aarch64)
+file ~/workspace-qcs6490/Alchemy-out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld
+
+# 5. Deploy to target (replace TARGET_IP)
+scp ~/workspace-qcs6490/Alchemy-out/dragonwing-qcs6490-aarch64/staging/usr/bin/helloworld \
+    root@TARGET_IP:/usr/bin/
+
+# 6. Run on target
 ssh root@TARGET_IP helloworld</code></pre>
+        </div>
+
+        <div class="card highlight">
+            <h4>📋 Environment Variables Summary</h4>
+            <table>
+                <tr><th>Variable</th><th>Description</th><th>Example</th></tr>
+                <tr><td><code>ALCHEMY_HOME</code></td><td>Path to Alchemy build system</td><td><code>/opt/alchemy</code></td></tr>
+                <tr><td><code>ALCHEMY_WORKSPACE_DIR</code></td><td>Path to workspace (for alchemake)</td><td><code>~/workspace-qcs6490</code></td></tr>
+                <tr><td><code>ALCHEMY_TARGET_CONFIG_DIR</code></td><td>Path to product configuration</td><td><code>$ALCHEMY_HOME/products/dragonwing-qcs6490</code></td></tr>
+                <tr><td><code>QCOM_SDK_PATH</code></td><td>Path to Qualcomm eSDK (optional)</td><td><code>~/qcom-wayland_sdk</code></td></tr>
+            </table>
         </div>
 
     </div>

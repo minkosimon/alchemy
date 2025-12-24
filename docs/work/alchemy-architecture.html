@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alchemy Build System - Architecture Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #0f3460;
+            --text-primary: #e6e6e6;
+            --text-secondary: #a6a6a6;
+            --accent: #e94560;
+            --accent-light: #ff6b6b;
+            --border: #2d3748;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+            padding: 40px 20px;
+            text-align: center;
+            border-bottom: 3px solid var(--accent);
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--accent-light);
+        }
+        
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        
+        nav {
+            background: var(--bg-secondary);
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        nav a {
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            background: var(--bg-card);
+            transition: all 0.3s ease;
+        }
+        
+        nav a:hover {
+            background: var(--accent);
+            transform: translateY(-2px);
+        }
+        
+        section {
+            margin: 40px 0;
+            padding: 30px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        
+        section h2 {
+            color: var(--accent-light);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        section h3 {
+            color: var(--text-primary);
+            margin: 20px 0 15px 0;
+        }
+        
+        .mermaid {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--border);
+        }
+        
+        th {
+            background: var(--bg-card);
+            color: var(--accent-light);
+        }
+        
+        tr:nth-child(even) {
+            background: rgba(255,255,255,0.02);
+        }
+        
+        tr:hover {
+            background: rgba(233, 69, 96, 0.1);
+        }
+        
+        code {
+            background: var(--bg-card);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            color: var(--accent-light);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        
+        .stat-card h4 {
+            color: var(--accent-light);
+            font-size: 2rem;
+        }
+        
+        .stat-card p {
+            color: var(--text-secondary);
+        }
+        
+        .description {
+            background: var(--bg-card);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid var(--accent);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+            
+            nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            section {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🔧 Alchemy Build System</h1>
+        <p>Architecture Documentation - Generated 2025-12-25</p>
+        <p>Version 1.3.10</p>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#root-files">Root Files</a></li>
+            <li><a href="#classes">Classes</a></li>
+            <li><a href="#targets">Targets</a></li>
+            <li><a href="#toolchains">Toolchains</a></li>
+            <li><a href="#flow">Include Flow</a></li>
+            <li><a href="#module-flow">Module Flow</a></li>
+            <li><a href="#reference">Reference</a></li>
+        </ul>
+    </nav>
+    
+    <div class="container">
+        <!-- Overview Section -->
+        <section id="overview">
+            <h2>📋 Overview</h2>
+            <p>Alchemy is a sophisticated GNU Make-based build system designed for cross-platform software compilation. It supports multiple target operating systems and various build systems.</p>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>145</h4>
+                    <p>Total .mk Files</p>
+                </div>
+                <div class="stat-card">
+                    <h4>18</h4>
+                    <p>Module Classes</p>
+                </div>
+                <div class="stat-card">
+                    <h4>5</h4>
+                    <p>Target OS</p>
+                </div>
+                <div class="stat-card">
+                    <h4>5</h4>
+                    <p>Architectures</p>
+                </div>
+            </div>
+            
+            <div class="description">
+                <strong>Supported Operating Systems:</strong> Linux, Darwin (macOS/iOS), Windows, eCos, Baremetal<br>
+                <strong>Supported Build Systems:</strong> Autotools, CMake, Meson, QMake, Custom<br>
+                <strong>Supported Architectures:</strong> ARM, AArch64, x64, x86, AVR
+            </div>
+        </section>
+        
+        <!-- Root Files Section -->
+        <section id="root-files">
+            <h2>📁 Root Level .mk Files</h2>
+            
+            <h3>Main Architecture Flow</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph Entry["🚀 Entry Point"]
+        main["main.mk"]
+    end
+
+    subgraph Core["📦 Core Definitions"]
+        variables["variables.mk<br/>LOCAL_xxx & TARGET_xxx"]
+        defs["defs.mk<br/>Utility Macros"]
+        clearvars["clearvars.mk<br/>Reset Variables"]
+    end
+
+    subgraph Setup["⚙️ Setup Phase"]
+        targetsetup["target-setup.mk"]
+        toolchainsetup["toolchain-setup.mk"]
+        check["check.mk"]
+    end
+
+    subgraph Config["🔧 Configuration"]
+        configdefs["config-defs.mk"]
+        configrules["config-rules.mk"]
+    end
+
+    subgraph Classes["📚 Module Classes"]
+        classessetup["classes/setup.mk"]
+        classesrules["classes/rules.mk"]
+    end
+
+    subgraph Output["📤 Output Generation"]
+        final["final.mk"]
+        image["image.mk"]
+        sdk["sdk.mk"]
+        symbols["symbols.mk"]
+        coverage["coverage.mk"]
+        genproject["genproject.mk"]
+        gdb["gdb.mk"]
+        buildgraph["build-graph.mk"]
+        dumpdatabase["dump-database.mk"]
+        help["help.mk"]
+    end
+
+    main --> variables
+    main --> defs
+    variables --> targetsetup
+    defs --> targetsetup
+    targetsetup --> toolchainsetup
+    toolchainsetup --> check
+    check --> classessetup
+    classessetup --> configdefs
+    configdefs --> configrules
+    configrules --> classesrules
+    
+    classesrules --> final
+    classesrules --> image
+    classesrules --> sdk
+    classesrules --> symbols
+    classesrules --> coverage
+    classesrules --> genproject
+    classesrules --> gdb
+    classesrules --> buildgraph
+    classesrules --> dumpdatabase
+    classesrules --> help
+            </div>
+            
+            <h3>Root Files Relationships</h3>
+            <div class="mermaid">
+flowchart LR
+    subgraph RootMK["Root .mk Files (22 files)"]
+        direction TB
+        
+        subgraph Primary["Primary Files"]
+            main["main.mk"]
+            envsetup["envsetup.mk"]
+        end
+        
+        subgraph CoreDef["Core Definitions"]
+            variables["variables.mk"]
+            defs["defs.mk"]
+            clearvars["clearvars.mk"]
+        end
+        
+        subgraph SetupFiles["Setup Files"]
+            targetsetup["target-setup.mk"]
+            toolchainsetup["toolchain-setup.mk"]
+        end
+        
+        subgraph ConfigFiles["Configuration"]
+            configdefs["config-defs.mk"]
+            configrules["config-rules.mk"]
+            check["check.mk"]
+        end
+        
+        subgraph BuildOutput["Build & Output"]
+            final["final.mk"]
+            image["image.mk"]
+            sdk["sdk.mk"]
+        end
+    end
+
+    main -->|"1st"| variables
+    main -->|"2nd"| defs
+    main -->|"3rd"| targetsetup
+    main -->|"4th"| toolchainsetup
+    main -->|"5th"| check
+    main -->|"6th"| configdefs
+    main -->|"7th"| configrules
+
+    envsetup --> targetsetup
+            </div>
+            
+            <h3>Root Files List</h3>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Purpose</th>
+                    <th>Key Dependencies</th>
+                </tr>
+                <tr>
+                    <td><code>main.mk</code></td>
+                    <td>Master orchestrator - includes all other files</td>
+                    <td>All other .mk files</td>
+                </tr>
+                <tr>
+                    <td><code>variables.mk</code></td>
+                    <td>Defines LOCAL_xxx and TARGET_xxx variable lists</td>
+                    <td>None</td>
+                </tr>
+                <tr>
+                    <td><code>defs.mk</code></td>
+                    <td>Utility macros (string manipulation, paths, etc.)</td>
+                    <td>None</td>
+                </tr>
+                <tr>
+                    <td><code>clearvars.mk</code></td>
+                    <td>Clears LOCAL_xxx before each module registration</td>
+                    <td>variables.mk</td>
+                </tr>
+                <tr>
+                    <td><code>target-setup.mk</code></td>
+                    <td>Target OS/architecture detection and setup</td>
+                    <td>targets/setup.mk</td>
+                </tr>
+                <tr>
+                    <td><code>toolchain-setup.mk</code></td>
+                    <td>Compiler toolchain configuration</td>
+                    <td>toolchains/setup.mk</td>
+                </tr>
+                <tr>
+                    <td><code>config-defs.mk</code></td>
+                    <td>Configuration system macros</td>
+                    <td>defs.mk</td>
+                </tr>
+                <tr>
+                    <td><code>config-rules.mk</code></td>
+                    <td>Configuration check/update rules</td>
+                    <td>config-defs.mk</td>
+                </tr>
+                <tr>
+                    <td><code>check.mk</code></td>
+                    <td>Build validation checks</td>
+                    <td>defs.mk</td>
+                </tr>
+                <tr>
+                    <td><code>final.mk</code></td>
+                    <td>Final tree generation</td>
+                    <td>All modules built</td>
+                </tr>
+                <tr>
+                    <td><code>image.mk</code></td>
+                    <td>Filesystem image generation</td>
+                    <td>final.mk</td>
+                </tr>
+                <tr>
+                    <td><code>sdk.mk</code></td>
+                    <td>SDK generation for distribution</td>
+                    <td>All modules</td>
+                </tr>
+                <tr>
+                    <td><code>symbols.mk</code></td>
+                    <td>Symbol extraction helpers</td>
+                    <td>toolchain</td>
+                </tr>
+                <tr>
+                    <td><code>coverage.mk</code></td>
+                    <td>Code coverage helpers</td>
+                    <td>All modules</td>
+                </tr>
+                <tr>
+                    <td><code>genproject.mk</code></td>
+                    <td>IDE project generation</td>
+                    <td>All modules</td>
+                </tr>
+                <tr>
+                    <td><code>gdb.mk</code></td>
+                    <td>GDB debugging helpers</td>
+                    <td>toolchain</td>
+                </tr>
+                <tr>
+                    <td><code>build-graph.mk</code></td>
+                    <td>Dependency graph generation</td>
+                    <td>All modules</td>
+                </tr>
+                <tr>
+                    <td><code>dump-database.mk</code></td>
+                    <td>Database export</td>
+                    <td>All modules</td>
+                </tr>
+                <tr>
+                    <td><code>help.mk</code></td>
+                    <td>Help target</td>
+                    <td>None</td>
+                </tr>
+                <tr>
+                    <td><code>properties.mk</code></td>
+                    <td>Properties helpers</td>
+                    <td>None</td>
+                </tr>
+                <tr>
+                    <td><code>oss-packages.mk</code></td>
+                    <td>OSS package helpers</td>
+                    <td>All modules</td>
+                </tr>
+                <tr>
+                    <td><code>envsetup.mk</code></td>
+                    <td>Environment setup shortcut</td>
+                    <td>target-setup.mk</td>
+                </tr>
+            </table>
+        </section>
+        
+        <!-- Classes Section -->
+        <section id="classes">
+            <h2>📚 Classes Folder Structure</h2>
+            
+            <h3>Module Class Hierarchy</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph Base["Base Classes"]
+        GENERIC["GENERIC/<br/>setup.mk, rules.mk"]
+        BINARY["BINARY/<br/>setup.mk, rules.mk"]
+    end
+
+    subgraph Internal["Internal Classes (5)"]
+        EXECUTABLE["EXECUTABLE/"]
+        SHARED_LIBRARY["SHARED_LIBRARY/"]
+        STATIC_LIBRARY["STATIC_LIBRARY/"]
+        LIBRARY["LIBRARY/"]
+        PREBUILT["PREBUILT/"]
+    end
+
+    subgraph External["External Build Systems (6)"]
+        AUTOTOOLS["AUTOTOOLS/"]
+        CMAKE["CMAKE/"]
+        MESON["MESON/"]
+        QMAKE["QMAKE/"]
+        CUSTOM["CUSTOM/"]
+        META_PACKAGE["META_PACKAGE/"]
+    end
+
+    subgraph Special["Special Classes (5)"]
+        LINUX["LINUX/"]
+        LINUX_MODULE["LINUX_MODULE/"]
+        PYTHON_EXTENSION["PYTHON_EXTENSION/"]
+        PYTHON_PACKAGE["PYTHON_PACKAGE/"]
+        GI_TYPELIB["GI_TYPELIB/"]
+    end
+
+    GENERIC --> BINARY
+    BINARY --> EXECUTABLE
+    BINARY --> SHARED_LIBRARY
+    BINARY --> STATIC_LIBRARY
+    BINARY --> LIBRARY
+    GENERIC --> PREBUILT
+    GENERIC --> External
+    GENERIC --> Special
+            </div>
+            
+            <h3>Standard Class Pattern</h3>
+            <div class="mermaid">
+flowchart LR
+    subgraph Pattern["Class File Pattern"]
+        setup["setup.mk<br/>(Optional)<br/>Initialize variables"]
+        register["register.mk<br/>(Required)<br/>Register module"]
+        rules["rules.mk<br/>(Required)<br/>Build rules"]
+        
+        setup --> register --> rules
+    end
+            </div>
+            
+            <h3>Classes Root Files</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph ClassesRoot["classes/ Root Files (9)"]
+        setup["setup.mk<br/>Class Registration"]
+        rules["rules.mk<br/>Rules Generation"]
+        extra["extra-rules.mk"]
+        
+        subgraph CodeQuality["Code Quality"]
+            codechecksetup["codecheck-setup.mk"]
+            codecheckrules["codecheck-rules.mk"]
+            codeformatsetup["codeformat-setup.mk"]
+            codeformatrules["codeformat-rules.mk"]
+        end
+        
+        subgraph IDE["IDE Integration"]
+            genprojectsetup["genproject-setup.mk"]
+            genprojectrules["genproject-rules.mk"]
+        end
+    end
+
+    setup --> rules
+    setup --> codechecksetup
+    setup --> codeformatsetup
+    setup --> genprojectsetup
+            </div>
+            
+            <h3>All Classes - File Inventory</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph Classes["classes/ - 18 Module Classes"]
+        subgraph Row1["Build System Classes"]
+            AUTOTOOLS["AUTOTOOLS/<br/>setup, register, rules"]
+            CMAKE["CMAKE/<br/>setup, register, rules"]
+            MESON["MESON/<br/>setup, register, rules"]
+            QMAKE["QMAKE/<br/>setup, register, rules"]
+        end
+        
+        subgraph Row2["Binary Classes"]
+            EXECUTABLE["EXECUTABLE/<br/>register, rules"]
+            SHARED_LIBRARY["SHARED_LIBRARY/<br/>register, rules"]
+            STATIC_LIBRARY["STATIC_LIBRARY/<br/>register, rules"]
+            LIBRARY["LIBRARY/<br/>register, rules"]
+        end
+        
+        subgraph Row3["Special Classes"]
+            LINUX["LINUX/<br/>register, rules,<br/>rules-linux, rules-perf"]
+            LINUX_MODULE["LINUX_MODULE/<br/>setup, register, rules"]
+            PYTHON_EXTENSION["PYTHON_EXTENSION/<br/>setup, register, rules"]
+            PYTHON_PACKAGE["PYTHON_PACKAGE/<br/>setup, register, rules"]
+        end
+        
+        subgraph Row4["Other Classes"]
+            GENERIC["GENERIC/<br/>setup, rules"]
+            BINARY["BINARY/<br/>setup, rules"]
+            PREBUILT["PREBUILT/<br/>register, rules"]
+            CUSTOM["CUSTOM/<br/>register, rules"]
+            META_PACKAGE["META_PACKAGE/<br/>register, rules"]
+            GI_TYPELIB["GI_TYPELIB/<br/>setup, register, rules"]
+        end
+    end
+            </div>
+            
+            <h3>Classes Description</h3>
+            <table>
+                <tr>
+                    <th>Class</th>
+                    <th>Files</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>GENERIC</code></td>
+                    <td>setup.mk, rules.mk</td>
+                    <td>Base class for all modules</td>
+                </tr>
+                <tr>
+                    <td><code>BINARY</code></td>
+                    <td>setup.mk, rules.mk</td>
+                    <td>Binary compilation (C/C++)</td>
+                </tr>
+                <tr>
+                    <td><code>EXECUTABLE</code></td>
+                    <td>register.mk, rules.mk</td>
+                    <td>Executable programs</td>
+                </tr>
+                <tr>
+                    <td><code>SHARED_LIBRARY</code></td>
+                    <td>register.mk, rules.mk</td>
+                    <td>Shared libraries (.so)</td>
+                </tr>
+                <tr>
+                    <td><code>STATIC_LIBRARY</code></td>
+                    <td>register.mk, rules.mk</td>
+                    <td>Static libraries (.a)</td>
+                </tr>
+                <tr>
+                    <td><code>LIBRARY</code></td>
+                    <td>register.mk, rules.mk</td>
+                    <td>Generic library (auto-detect type)</td>
+                </tr>
+                <tr>
+                    <td><code>PREBUILT</code></td>
+                    <td>register.mk, rules.mk</td>
+                    <td>Prebuilt binaries</td>
+                </tr>
+                <tr>
+                    <td><code>AUTOTOOLS</code></td>
+                    <td>setup.mk, register.mk, rules.mk</td>
+                    <td>Autotools projects (configure/make)</td>
+                </tr>
+                <tr>
+                    <td><code>CMAKE</code></td>
+                    <td>setup.mk, register.mk, rules.mk</td>
+                    <td>CMake projects</td>
+                </tr>
+                <tr>
+                    <td><code>MESON</code></td>
+                    <td>setup.mk, register.mk, rules.mk</td>
+                    <td>Meson build projects</td>
+                </tr>
+                <tr>
+                    <td><code>QMAKE</code></td>
+                    <td>setup.mk, register.mk, rules.mk</td>
+                    <td>Qt/QMake projects</td>
+                </tr>
+                <tr>
+                    <td><code>CUSTOM</code></td>
+                    <td>register.mk, rules.mk</td>
+                    <td>Custom build scripts</td>
+                </tr>
+                <tr>
+                    <td><code>META_PACKAGE</code></td>
+                    <td>register.mk, rules.mk</td>
+                    <td>Meta packages (grouping modules)</td>
+                </tr>
+                <tr>
+                    <td><code>LINUX</code></td>
+                    <td>register.mk, rules.mk, rules-linux.mk, rules-perf.mk</td>
+                    <td>Linux kernel builds</td>
+                </tr>
+                <tr>
+                    <td><code>LINUX_MODULE</code></td>
+                    <td>setup.mk, register.mk, rules.mk</td>
+                    <td>Linux kernel modules</td>
+                </tr>
+                <tr>
+                    <td><code>PYTHON_EXTENSION</code></td>
+                    <td>setup.mk, register.mk, rules.mk</td>
+                    <td>Python C extensions</td>
+                </tr>
+                <tr>
+                    <td><code>PYTHON_PACKAGE</code></td>
+                    <td>setup.mk, register.mk, rules.mk</td>
+                    <td>Python packages</td>
+                </tr>
+                <tr>
+                    <td><code>GI_TYPELIB</code></td>
+                    <td>setup.mk, register.mk, rules.mk</td>
+                    <td>GObject introspection typelibs</td>
+                </tr>
+            </table>
+        </section>
+        
+        <!-- Targets Section -->
+        <section id="targets">
+            <h2>🎯 Targets Folder Structure</h2>
+            
+            <h3>Target OS Hierarchy</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph Root["targets/"]
+        setup["setup.mk"]
+        packages["packages.mk"]
+        nativepkg["native-packages.mk"]
+    end
+
+    subgraph Linux["linux/"]
+        l_setup["setup.mk"]
+        l_pkg["packages.mk"]
+        
+        subgraph LinuxFlavours["Flavours"]
+            native["native/<br/>setup.mk, packages.mk"]
+            chroot["native-chroot/<br/>setup.mk, packages.mk"]
+            android["android/<br/>setup.mk, packages.mk"]
+            yocto["yocto/<br/>setup.mk"]
+        end
+    end
+
+    subgraph Darwin["darwin/"]
+        d_setup["setup.mk"]
+        d_pkg["packages.mk"]
+        
+        subgraph DarwinFlavours["Flavours"]
+            d_native["native/<br/>setup.mk, packages.mk"]
+            ios["iphoneos/<br/>setup.mk, packages.mk"]
+            sim["iphonesimulator/<br/>setup.mk, packages.mk"]
+        end
+    end
+
+    subgraph Other["Other OS"]
+        windows["windows/<br/>setup.mk, packages.mk"]
+        baremetal["baremetal/<br/>setup.mk, packages.mk"]
+        ecos["ecos/<br/>setup.mk, packages.mk"]
+    end
+
+    setup --> l_setup
+    setup --> d_setup
+    setup --> windows
+    setup --> baremetal
+    setup --> ecos
+    
+    packages --> nativepkg
+    packages --> l_pkg
+    packages --> d_pkg
+            </div>
+            
+            <h3>Targets File Tree</h3>
+            <div class="mermaid">
+flowchart LR
+    subgraph targets["targets/ (26 .mk files)"]
+        subgraph root["Root (3)"]
+            t_setup["setup.mk"]
+            t_packages["packages.mk"]
+            t_native["native-packages.mk"]
+        end
+        
+        subgraph linux["linux/ (11)"]
+            l_setup["setup.mk"]
+            l_pkg["packages.mk"]
+            l_native["native/"]
+            l_chroot["native-chroot/"]
+            l_android["android/"]
+            l_yocto["yocto/"]
+        end
+        
+        subgraph darwin["darwin/ (8)"]
+            d_setup["setup.mk"]
+            d_pkg["packages.mk"]
+            d_native["native/"]
+            d_iphone["iphoneos/"]
+            d_sim["iphonesimulator/"]
+        end
+        
+        subgraph other["Other (6)"]
+            windows["windows/"]
+            baremetal["baremetal/"]
+            ecos["ecos/"]
+        end
+    end
+            </div>
+            
+            <h3>Targets Summary</h3>
+            <table>
+                <tr>
+                    <th>Target OS</th>
+                    <th>Flavours</th>
+                    <th>File Count</th>
+                </tr>
+                <tr>
+                    <td><code>linux</code></td>
+                    <td>native, native-chroot, android, yocto</td>
+                    <td>11 files</td>
+                </tr>
+                <tr>
+                    <td><code>darwin</code></td>
+                    <td>native, iphoneos, iphonesimulator</td>
+                    <td>8 files</td>
+                </tr>
+                <tr>
+                    <td><code>windows</code></td>
+                    <td>-</td>
+                    <td>2 files</td>
+                </tr>
+                <tr>
+                    <td><code>baremetal</code></td>
+                    <td>-</td>
+                    <td>2 files</td>
+                </tr>
+                <tr>
+                    <td><code>ecos</code></td>
+                    <td>-</td>
+                    <td>2 files</td>
+                </tr>
+            </table>
+        </section>
+        
+        <!-- Toolchains Section -->
+        <section id="toolchains">
+            <h2>🔨 Toolchains Folder Structure</h2>
+            
+            <h3>Toolchain Setup Flow</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph Root["toolchains/"]
+        setup["setup.mk<br/>Entry Point"]
+        selection["selection.mk<br/>Compiler Selection"]
+        flags["flags.mk<br/>Global Flags"]
+        warnings["warnings.mk<br/>Warning Flags"]
+        cpu["cpu.mk<br/>CPU Detection"]
+        libc["libc.mk<br/>C Library"]
+        packages["packages.mk<br/>Toolchain Packages"]
+    end
+
+    subgraph ArchFlags["Architecture Flags"]
+        flags_arm["flags-arm.mk"]
+        flags_aarch64["flags-aarch64.mk"]
+        flags_x64["flags-x64.mk"]
+        flags_x86["flags-x86.mk"]
+        flags_avr["flags-avr.mk"]
+    end
+
+    subgraph OS["OS-Specific"]
+        linux["linux/"]
+        darwin["darwin/"]
+        windows["windows/"]
+        baremetal["baremetal/"]
+        ecos["ecos/"]
+    end
+
+    setup --> selection
+    setup --> flags
+    setup --> warnings
+    
+    selection --> OS
+    flags --> ArchFlags
+    packages --> libc
+            </div>
+            
+            <h3>Linux Toolchain Detail</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph linux["toolchains/linux/"]
+        l_selection["selection.mk"]
+        l_flags["flags.mk"]
+        l_packages["packages.mk"]
+        
+        subgraph eglibc["eglibc/"]
+            eg_selection["selection.mk"]
+            eg_flags["flags.mk"]
+            eg_packages["packages.mk"]
+        end
+        
+        subgraph musl["musl/"]
+            mu_selection["selection.mk"]
+            mu_flags["flags.mk"]
+        end
+        
+        subgraph bionic["bionic/"]
+            bi_selection["selection.mk"]
+            bi_flags["flags.mk"]
+        end
+        
+        subgraph native["native/"]
+            na_selection["selection.mk"]
+            na_flags["flags.mk"]
+        end
+        
+        subgraph yocto["yocto/"]
+            yo_flags["flags.mk"]
+        end
+    end
+    
+    l_selection --> eglibc
+    l_selection --> musl
+    l_selection --> bionic
+    l_selection --> native
+            </div>
+            
+            <h3>Toolchain Selection Process</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph Input["Input Variables"]
+        TARGET_OS["TARGET_OS"]
+        TARGET_ARCH["TARGET_ARCH"]
+        TARGET_LIBC["TARGET_LIBC"]
+        USE_CLANG["USE_CLANG"]
+    end
+
+    subgraph Selection["selection.mk"]
+        host["Setup HOST_CC, HOST_CXX"]
+        os_sel["Include OS selection"]
+        target["Setup TARGET_CC, TARGET_CXX"]
+    end
+
+    subgraph Flags["flags.mk"]
+        global["Global CFLAGS, LDFLAGS"]
+        arch["Architecture flags"]
+        os_flags["OS-specific flags"]
+    end
+
+    subgraph Output["Output Variables"]
+        CC["TARGET_CC"]
+        CXX["TARGET_CXX"]
+        CFLAGS["TARGET_GLOBAL_CFLAGS"]
+        LDFLAGS["TARGET_GLOBAL_LDFLAGS"]
+    end
+
+    Input --> Selection --> Flags --> Output
+            </div>
+        </section>
+        
+        <!-- Include Flow Section -->
+        <section id="flow">
+            <h2>🔄 Include Flow</h2>
+            
+            <h3>Build Execution Sequence</h3>
+            <div class="mermaid">
+sequenceDiagram
+    participant Make as make
+    participant Main as main.mk
+    participant Setup as Setup Files
+    participant Classes as classes/
+    participant Scan as Module Scan
+    participant Rules as Rules Gen
+    participant Output as Output Files
+
+    Make->>Main: Execute
+    
+    Note over Main: Phase 1: Setup
+    Main->>Setup: include variables.mk
+    Main->>Setup: include defs.mk
+    Main->>Setup: include target-setup.mk
+    Main->>Setup: include toolchain-setup.mk
+    
+    Note over Main: Phase 2: Classes
+    Main->>Classes: include classes/setup.mk
+    Main->>Main: include config-defs.mk
+    Main->>Main: include config-rules.mk
+    
+    Note over Main: Phase 3: Scan
+    Main->>Scan: Find all atom.mk
+    loop Each atom.mk
+        Scan->>Main: Register module
+    end
+    
+    Note over Main: Phase 4: Rules
+    Main->>Rules: include classes/rules.mk
+    loop Each Module
+        Rules->>Rules: Generate rules
+    end
+    
+    Note over Main: Phase 5: Output
+    Main->>Output: include final.mk, image.mk...
+    
+    Main-->>Make: Execute target
+            </div>
+        </section>
+        
+        <!-- Module Flow Section -->
+        <section id="module-flow">
+            <h2>📦 Module Registration Flow</h2>
+            
+            <h3>atom.mk Processing</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph AtomMK["User's atom.mk"]
+        step1["LOCAL_PATH := &#36;(call my-dir)"]
+        step2["include &#36;(CLEAR_VARS)"]
+        step3["LOCAL_MODULE := mymodule<br/>LOCAL_SRC_FILES := ...<br/>LOCAL_LIBRARIES := ..."]
+        step4["include &#36;(BUILD_EXECUTABLE)"]
+        
+        step1 --> step2 --> step3 --> step4
+    end
+
+    subgraph ClearVars["clearvars.mk"]
+        clear["Clear all LOCAL_xxx variables"]
+    end
+
+    subgraph Register["EXECUTABLE/register.mk"]
+        validate["Validate LOCAL_xxx"]
+        setclass["LOCAL_MODULE_CLASS := EXECUTABLE"]
+        moduleadd["&#36;(call module-add)"]
+    end
+
+    subgraph Database["Module Database"]
+        modules["__modules list"]
+        modvars["__modules.mymodule.* variables"]
+    end
+
+    step2 --> clear
+    step4 --> validate
+    validate --> setclass
+    setclass --> moduleadd
+    moduleadd --> modules
+    moduleadd --> modvars
+            </div>
+            
+            <h3>BUILD_xxx Macros</h3>
+            <div class="mermaid">
+flowchart LR
+    subgraph BuildMacros["Available BUILD_xxx Macros"]
+        exe["BUILD_EXECUTABLE"]
+        shared["BUILD_SHARED_LIBRARY"]
+        static["BUILD_STATIC_LIBRARY"]
+        lib["BUILD_LIBRARY"]
+        prebuilt["BUILD_PREBUILT"]
+        auto["BUILD_AUTOTOOLS"]
+        cmake["BUILD_CMAKE"]
+        meson["BUILD_MESON"]
+        qmake["BUILD_QMAKE"]
+        custom["BUILD_CUSTOM"]
+        meta["BUILD_META_PACKAGE"]
+        linux["BUILD_LINUX"]
+        linuxmod["BUILD_LINUX_MODULE"]
+        pyext["BUILD_PYTHON_EXTENSION"]
+        pypkg["BUILD_PYTHON_PACKAGE"]
+    end
+            </div>
+        </section>
+        
+        <!-- Reference Section -->
+        <section id="reference">
+            <h2>📖 Complete Reference</h2>
+            
+            <h3>File Count Summary</h3>
+            <table>
+                <tr>
+                    <th>Folder</th>
+                    <th>.mk Files</th>
+                    <th>Key Files</th>
+                </tr>
+                <tr>
+                    <td><code>/</code> (Root)</td>
+                    <td>22</td>
+                    <td>main.mk, defs.mk, variables.mk</td>
+                </tr>
+                <tr>
+                    <td><code>classes/</code></td>
+                    <td>51</td>
+                    <td>setup.mk, rules.mk, 18 subfolders</td>
+                </tr>
+                <tr>
+                    <td><code>targets/</code></td>
+                    <td>26</td>
+                    <td>setup.mk, packages.mk, 5 OS folders</td>
+                </tr>
+                <tr>
+                    <td><code>toolchains/</code></td>
+                    <td>40</td>
+                    <td>setup.mk, selection.mk, flags.mk</td>
+                </tr>
+                <tr>
+                    <td><code>packages/</code></td>
+                    <td>1</td>
+                    <td>helloworld/atom.mk</td>
+                </tr>
+                <tr>
+                    <td><code>products/</code></td>
+                    <td>3</td>
+                    <td>product.mk, setup.mk</td>
+                </tr>
+                <tr>
+                    <td><code>kconfig/</code></td>
+                    <td>1</td>
+                    <td>atom.mk</td>
+                </tr>
+                <tr>
+                    <td><code>doc/</code></td>
+                    <td>1</td>
+                    <td>python-native-atom.mk</td>
+                </tr>
+                <tr>
+                    <td><strong>Total</strong></td>
+                    <td><strong>145</strong></td>
+                    <td></td>
+                </tr>
+            </table>
+            
+            <h3>Key Design Principles</h3>
+            <div class="description">
+                <strong>1. Separation of Concerns</strong><br>
+                Core definitions are isolated from build logic. Target setup is separate from toolchain setup.<br><br>
+                
+                <strong>2. Hierarchical Organization</strong><br>
+                OS-specific code lives in targets/&lt;os&gt;/ and toolchains/&lt;os&gt;/. Architecture flags are isolated in flags-&lt;arch&gt;.mk.<br><br>
+                
+                <strong>3. Extensibility</strong><br>
+                New module classes follow the standard pattern. New targets/toolchains can be added without modifying core files.<br><br>
+                
+                <strong>4. Build Phases</strong><br>
+                1) Setup Phase → 2) Scan Phase → 3) Registration Phase → 4) Rules Phase → 5) Execution Phase
+            </div>
+        </section>
+    </div>
+    
+    <footer>
+        <p>Alchemy Build System Architecture Documentation</p>
+        <p>Generated: 2025-12-25 | Version: 1.3.10</p>
+        <p>Total: 145 .mk files across 4 main directories</p>
+    </footer>
+    
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#0f3460',
+                primaryTextColor: '#e6e6e6',
+                primaryBorderColor: '#e94560',
+                lineColor: '#e94560',
+                secondaryColor: '#16213e',
+                tertiaryColor: '#1a1a2e',
+                background: '#1a1a2e',
+                mainBkg: '#0f3460',
+                nodeBorder: '#e94560',
+                clusterBkg: '#16213e',
+                clusterBorder: '#2d3748',
+                titleColor: '#ff6b6b',
+                edgeLabelBackground: '#16213e'
+            },
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            sequence: {
+                useMaxWidth: true,
+                boxMargin: 10
+            }
+        });
+    </script>
+</body>
+</html>
