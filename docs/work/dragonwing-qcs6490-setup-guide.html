@@ -487,7 +487,8 @@ ls ~/qcom-wayland_sdk/tmp/sysroots/x86_64/usr/bin/aarch64-qcom-linux/
         <div class="file-tree"><span class="folder">alchemy/</span>
 ├── <span class="folder">products/</span>
 │   └── <span class="folder">dragonwing-qcs6490/</span>         <span class="comment"># Product configuration</span>
-│       ├── <span class="highlight">setup.mk</span>                 <span class="comment"># Target OS/arch settings</span>
+│       ├── <span class="highlight">product.mk</span>               <span class="comment"># Target OS/arch settings (required)</span>
+│       ├── <span class="file">setup.mk</span>                 <span class="comment"># Alternative name (legacy)</span>
 │       └── <span class="highlight">toolchain-setup.mk</span>       <span class="comment"># Toolchain configuration</span>
 │
 ├── <span class="folder">packages/</span>
@@ -504,7 +505,7 @@ ls ~/qcom-wayland_sdk/tmp/sysroots/x86_64/usr/bin/aarch64-qcom-linux/
 
         <h3>4.2 Product Configuration Files</h3>
 
-        <h4>📄 products/dragonwing-qcs6490/setup.mk</h4>
+        <h4>📄 products/dragonwing-qcs6490/product.mk</h4>
         <pre><code>###############################################################################
 ## Product setup for Dragonwing QCS6490 board
 ###############################################################################
@@ -514,8 +515,10 @@ TARGET_PRODUCT := dragonwing-qcs6490
 TARGET_PRODUCT_VARIANT := aarch64
 
 # Target OS configuration
+# Note: Using empty flavour to avoid loading default yocto setup
+# The Qualcomm eSDK is configured manually in toolchain-setup.mk
 TARGET_OS := linux
-TARGET_OS_FLAVOUR := yocto
+TARGET_OS_FLAVOUR :=
 
 # Target architecture (ARM 64-bit)
 TARGET_ARCH := aarch64
@@ -549,11 +552,14 @@ endif
 QCOM_SDK_TARGET_SYSROOT := $(QCOM_SDK_PATH)/tmp/sysroots/qcm6490-idp
 QCOM_SDK_HOST_SYSROOT   := $(QCOM_SDK_PATH)/tmp/sysroots/x86_64
 
-# Cross-compiler prefix
+# Cross-compiler prefix (full paths)
 QCOM_TOOLCHAIN_PATH := $(QCOM_SDK_HOST_SYSROOT)/usr/bin/aarch64-qcom-linux
 TARGET_CROSS := $(QCOM_TOOLCHAIN_PATH)/aarch64-qcom-linux-
 
-# Compiler tools
+# Define toolchain triplet directly to avoid auto-detection issues
+TARGET_TOOLCHAIN_TRIPLET := aarch64-qcom-linux
+
+# Compiler tools (full paths)
 TARGET_CC      := $(TARGET_CROSS)gcc
 TARGET_CXX     := $(TARGET_CROSS)g++
 TARGET_AS      := $(TARGET_CROSS)as
