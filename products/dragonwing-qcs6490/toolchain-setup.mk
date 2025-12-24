@@ -38,10 +38,13 @@ endif
 # Cross-compiler toolchain path
 QCOM_TOOLCHAIN_PATH := $(QCOM_SDK_HOST_SYSROOT)/usr/bin/aarch64-qcom-linux
 
-# Cross-compiler prefix
+# Cross-compiler prefix (full path)
 TARGET_CROSS := $(QCOM_TOOLCHAIN_PATH)/aarch64-qcom-linux-
 
-# Compiler tools
+# Define toolchain triplet directly to avoid auto-detection issues
+TARGET_TOOLCHAIN_TRIPLET := aarch64-qcom-linux
+
+# Compiler tools (full paths)
 TARGET_CC      := $(TARGET_CROSS)gcc
 TARGET_CXX     := $(TARGET_CROSS)g++
 TARGET_CPP     := $(TARGET_CROSS)gcc -E
